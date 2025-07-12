@@ -1,0 +1,18 @@
+/* Styling for the admin dashboard */
+body {
+    background-color: #ffffff;
+}
+
+.btn-primary {
+    background-color: #87ceeb;
+    border-color: #87ceeb;
+}
+
+.btn-primary:hover {
+    background-color: #6bb9d8;
+    border-color: #6bb9d8;
+}
+
+.card {
+    margin-bottom: 20px;
+}
