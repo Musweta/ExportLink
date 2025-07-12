@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <input type="password" class="form-control" id="password" name="password" required>
         </div>
         <button type="submit" class="btn btn-primary">Login</button>
-        <a href="forgot_password.php" class="btn btn-link">Forgot Password?</a>
+        <a href="forgotPassword.php" class="btn btn-link">Forgot Password?</a>
     </form>
 </div>
 
