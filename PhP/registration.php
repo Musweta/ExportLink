@@ -1,4 +1,6 @@
 <?php
+require_once 'header.php';
+
 // Database connection
 $host = "localhost";
 $dbUser = "root";
@@ -54,9 +56,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $insertStmt->bind_param("ssss", $username, $hashedPassword, $role, $email);
 
             if ($insertStmt->execute()) {
-                echo "<div class='alert alert-success'>✅ Registration successful!</div>";
-                // Optionally reset fields
-                $username = $email = $role = '';
+                echo "<div class='alert alert-success'>Registration successful! You can now <a href='login.php'>login</a>.</div>";
+                header("Location: productListing.php");
+                exit;
             } else {
                 $errors[] = "Database error: " . $insertStmt->error;
             }
@@ -73,28 +75,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <!-- Responsive registration form -->
 <div class="container mt-5">
+   
     <h2>Register</h2>
-
-    <?php if (!empty($errors)): ?>
-        <div class="alert alert-danger">
-            <ul>
-                <?php foreach ($errors as $e): ?>
-                    <li><?php echo htmlspecialchars($e); ?></li>
-                <?php endforeach; ?>
-            </ul>
-        </div>
-    <?php endif; ?>
-
+    
     <form method="POST" action="" class="col-md-6 mx-auto">
         <div class="mb-3">
             <label for="username" class="form-label">Username</label>
-            <input type="text" class="form-control" id="username" name="username" required
-                   value="<?php echo htmlspecialchars($username); ?>" placeholder="Enter username">
+            <input type="text" class="form-control" id="username" name="username" required placeholder="Enter username">
         </div>
         <div class="mb-3">
             <label for="email" class="form-label">Email</label>
-            <input type="email" class="form-control" id="email" name="email" required
-                   value="<?php echo htmlspecialchars($email); ?>" placeholder="Enter email">
+            <input type="email" class="form-control" id="email" name="email" required placeholder="Enter email">
         </div>
         <div class="mb-3">
             <label for="password" class="form-label">Password</label>
@@ -103,9 +94,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="mb-3">
             <label for="role" class="form-label">Role</label>
             <select class="form-select" id="role" name="role" required>
-                <option value="" disabled <?php echo $role === '' ? 'selected' : ''; ?>>Select role</option>
-                <option value="farmer" <?php echo $role === 'farmer' ? 'selected' : ''; ?>>Farmer</option>
-                <option value="importer" <?php echo $role === 'importer' ? 'selected' : ''; ?>>Importer</option>
+                <option value="" disabled selected>Select role</option>
+                <option value="farmer">Farmer</option>
+                <option value="importer">Importer</option>
             </select>
         </div>
         <button type="submit" class="btn btn-primary">Register</button>
