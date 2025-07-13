@@ -7,15 +7,16 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'admin') {
     exit;
 }
 
-// Fetch user and order statistics
+// Fetch statistics
 $user_count = $pdo->query("SELECT COUNT(*) as count FROM users")->fetch()['count'];
 $order_count = $pdo->query("SELECT COUNT(*) as count FROM orders")->fetch()['count'];
 ?>
 
+<!-- Responsive admin dashboard -->
 <div class="container mt-5">
     <h2>Admin Dashboard</h2>
-    <div class="row">
-        <div class="col-md-6">
+    <div class="row row-cols-1 row-cols-md-2 g-4">
+        <div class="col">
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">Total Users</h5>
@@ -24,7 +25,7 @@ $order_count = $pdo->query("SELECT COUNT(*) as count FROM orders")->fetch()['cou
                 </div>
             </div>
         </div>
-        <div class="col-md-6">
+        <div class="col">
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">Total Orders</h5>

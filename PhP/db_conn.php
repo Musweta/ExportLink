@@ -5,7 +5,7 @@ try {
     $username = "root"; 
     $password = "student"; 
 
-    $pdo = new PDO("mysql:host=localhost;dbname=isproject;charset=utf8mb4", "root", "student", [
+    $pdo = new PDO($dsn, $username, $password, [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
     ]);
@@ -13,6 +13,8 @@ try {
     // Handle connection errors 
     die("Connection failed: " . $e->getMessage());  
 }
+?>
+<?php
 // Connection successful
 echo "Connected successfully";          
 ?>
