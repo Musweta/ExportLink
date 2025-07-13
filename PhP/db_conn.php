@@ -4,14 +4,15 @@ try {
     $dsn = "mysql:host=localhost;dbname=isproject;charset=utf8mb4";
     $username = "root"; 
     $password = "student"; 
-    $pdo = new PDO($dsn, $username, $password, [
+
+    $pdo = new PDO("mysql:host=localhost;dbname=isproject;charset=utf8mb4", "root", "student", [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
     ]);
 } catch (PDOException $e) {
     // Handle connection errors 
-    die("Connection failed: " . $e->getMessage());
+    die("Connection failed: " . $e->getMessage());  
 }
 // Connection successful
-echo "Connected successfully";
+echo "Connected successfully";          
 ?>

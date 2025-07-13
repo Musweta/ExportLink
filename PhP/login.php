@@ -1,5 +1,6 @@
 <?php
 require_once 'header.php';
+require_once 'db_conn.php';
 
 // Handle login
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -23,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
 <div class="container mt-5">
     <h2>Login</h2>
-    <form method="POST" action="">
+    <form method="POST" action="login.php">
         <div class="mb-3">
             <label for="username" class="form-label">Username</label>
             <input type="text" class="form-control" id="username" name="username" required>
