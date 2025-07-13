@@ -1,56 +1,100 @@
 <?php
-require_once 'header.php';
+// Database connection
+$host = "localhost";
+$dbUser = "root";
+$dbPass = "student";
+$dbName = "isproject";
 
-// Handle user registration
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $username = filter_input(INPUT_POST, 'username', FILTER_UNSAFE_RAW);
-    $username = htmlspecialchars($username, ENT_QUOTES, 'UTF-8');
-    $email = filter_input(INPUT_POST, 'email', FILTER_SANITIZE_EMAIL);
-    $email = htmlspecialchars($email, ENT_QUOTES, 'UTF-8');
+// Create MySQL connection
+$conn = new mysqli($host, $dbUser, $dbPass, $dbName);
 
-    $password = password_hash($_POST['password'], PASSWORD_BCRYPT);
-    $username = filter_input(INPUT_POST, 'username', FILTER_UNSAFE_RAW);
-    $username = htmlspecialchars($username, ENT_QUOTES, 'UTF-8');
-
-    $role = htmlspecialchars($role, ENT_QUOTES, 'UTF-8');
-
-    // Check if username already exists
-$stmt = $conn->prepare("SELECT id FROM users WHERE username = ?");
-$stmt->bind_param("s", $username);
-$stmt->execute();
-$stmt->store_result();
-
-if ($stmt->num_rows > 0) {
-    echo "❌ Username already taken. Please choose another.";
-    exit;
+// Check the connection
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
 }
 
-    // Validate inputs
-    if (!$username || !$email || !$password || !in_array($role, ['farmer', 'importer'])) {
-        echo "<div class='alert alert-danger'>Invalid input data.</div>";
-    } else {
-        try {
-            $stmt = $pdo->prepare("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)");
-            $stmt->execute([$username, $email, $password, $role]);
-            echo "<div class='alert alert-success'>Registration successful! Please <a href='login.php'>login</a>.</div>";
-        } catch (PDOException $e) {
-            echo "<div class='alert alert-danger'>Error: " . htmlspecialchars($e->getMessage()) . "</div>";
-        }
+// Initialize variables for form repopulation
+$username = '';
+$email = '';
+$role = '';
+$errors = [];
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Sanitize inputs
+    $username = trim($_POST['username'] ?? '');
+    $password = $_POST['password'] ?? '';
+    $email    = filter_input(INPUT_POST, 'email', FILTER_SANITIZE_EMAIL) ?? '';
+    $role     = trim($_POST['role'] ?? '');
+
+    // Validate fields
+    if ($username === '' || $password === '' || $email === '' || $role === '') {
+        $errors[] = "All fields are required!";
     }
+
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $errors[] = "Invalid email format.";
+    }
+
+    // Proceed if no errors
+    if (empty($errors)) {
+        // Hash the password
+        $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+
+        // Check if username exists
+        $checkStmt = $conn->prepare("SELECT id FROM users WHERE username = ?");
+        $checkStmt->bind_param("s", $username);
+        $checkStmt->execute();
+        $checkStmt->store_result();
+
+        if ($checkStmt->num_rows > 0) {
+            $errors[] = "Username already taken. Please choose another.";
+        } else {
+            // Insert user
+            $insertStmt = $conn->prepare("INSERT INTO users (username, password, role, email) VALUES (?, ?, ?, ?)");
+            $insertStmt->bind_param("ssss", $username, $hashedPassword, $role, $email);
+
+            if ($insertStmt->execute()) {
+                echo "<div class='alert alert-success'>✅ Registration successful!</div>";
+                // Optionally reset fields
+                $username = $email = $role = '';
+            } else {
+                $errors[] = "Database error: " . $insertStmt->error;
+            }
+
+            $insertStmt->close();
+        }
+
+        $checkStmt->close();
+    }
+
+    $conn->close();
 }
 ?>
 
 <!-- Responsive registration form -->
 <div class="container mt-5">
     <h2>Register</h2>
+
+    <?php if (!empty($errors)): ?>
+        <div class="alert alert-danger">
+            <ul>
+                <?php foreach ($errors as $e): ?>
+                    <li><?php echo htmlspecialchars($e); ?></li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
+    <?php endif; ?>
+
     <form method="POST" action="" class="col-md-6 mx-auto">
         <div class="mb-3">
             <label for="username" class="form-label">Username</label>
-            <input type="text" class="form-control" id="username" name="username" required placeholder="Enter username">
+            <input type="text" class="form-control" id="username" name="username" required
+                   value="<?php echo htmlspecialchars($username); ?>" placeholder="Enter username">
         </div>
         <div class="mb-3">
             <label for="email" class="form-label">Email</label>
-            <input type="email" class="form-control" id="email" name="email" required placeholder="Enter email">
+            <input type="email" class="form-control" id="email" name="email" required
+                   value="<?php echo htmlspecialchars($email); ?>" placeholder="Enter email">
         </div>
         <div class="mb-3">
             <label for="password" class="form-label">Password</label>
@@ -59,9 +103,9 @@ if ($stmt->num_rows > 0) {
         <div class="mb-3">
             <label for="role" class="form-label">Role</label>
             <select class="form-select" id="role" name="role" required>
-                <option value="" disabled selected>Select role</option>
-                <option value="farmer">Farmer</option>
-                <option value="importer">Importer</option>
+                <option value="" disabled <?php echo $role === '' ? 'selected' : ''; ?>>Select role</option>
+                <option value="farmer" <?php echo $role === 'farmer' ? 'selected' : ''; ?>>Farmer</option>
+                <option value="importer" <?php echo $role === 'importer' ? 'selected' : ''; ?>>Importer</option>
             </select>
         </div>
         <button type="submit" class="btn btn-primary">Register</button>

@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         </div>
         <div class="d-flex flex-column flex-md-row gap-2">
             <button type="submit" class="btn btn-primary">Login</button>
-            <a href="forgot_password.php" class="btn btn-link">Forgot Password?</a>
+            <a href="forgotpassword.php" class="btn btn-link">Forgot Password?</a>
         </div>
     </form>
 </div>
