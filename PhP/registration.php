@@ -3,10 +3,27 @@ require_once 'header.php';
 
 // Handle user registration
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $username = filter_input(INPUT_POST, 'username', FILTER_SANITIZE_STRING);
+    $username = filter_input(INPUT_POST, 'username', FILTER_UNSAFE_RAW);
+    $username = htmlspecialchars($username, ENT_QUOTES, 'UTF-8');
     $email = filter_input(INPUT_POST, 'email', FILTER_SANITIZE_EMAIL);
+    $email = htmlspecialchars($email, ENT_QUOTES, 'UTF-8');
+
     $password = password_hash($_POST['password'], PASSWORD_BCRYPT);
-    $role = filter_input(INPUT_POST, 'role', FILTER_SANITIZE_STRING);
+    $username = filter_input(INPUT_POST, 'username', FILTER_UNSAFE_RAW);
+    $username = htmlspecialchars($username, ENT_QUOTES, 'UTF-8');
+
+    $role = htmlspecialchars($role, ENT_QUOTES, 'UTF-8');
+
+    // Check if username already exists
+$stmt = $conn->prepare("SELECT id FROM users WHERE username = ?");
+$stmt->bind_param("s", $username);
+$stmt->execute();
+$stmt->store_result();
+
+if ($stmt->num_rows > 0) {
+    echo "❌ Username already taken. Please choose another.";
+    exit;
+}
 
     // Validate inputs
     if (!$username || !$email || !$password || !in_array($role, ['farmer', 'importer'])) {
