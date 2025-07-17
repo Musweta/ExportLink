@@ -14,7 +14,3 @@ try {
     die("Connection failed: " . $e->getMessage());  
 }
 ?>
-<?php
-// Connection successful
-echo "Connected successfully";          
-?>

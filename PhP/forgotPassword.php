@@ -1,13 +1,12 @@
 <?php
 require_once 'header.php';
 
-// Placeholder for password reset (email functionality not implemented)
+// Placeholder for password reset
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $email = filter_input(INPUT_POST, 'email', FILTER_SANITIZE_EMAIL);
     if (!$email) {
         echo "<div class='alert alert-danger'>Please enter a valid email.</div>";
     } else {
-        // Check if email exists
         $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
         $stmt->execute([$email]);
         if ($stmt->fetch()) {

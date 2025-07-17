@@ -8,9 +8,16 @@ require_once 'db_conn.php';
 // Check if user is logged in and fetch role
 if (isset($_SESSION['user_id'])) {
     $user_id = $_SESSION['user_id'];
-    $stmt = $pdo->prepare("SELECT role, username FROM users WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT role, username, approval_status FROM users WHERE id = ?");
     $stmt->execute([$user_id]);
     $user = $stmt->fetch();
+    // Restrict access if not approved
+    if ($user && $user['approval_status'] != 'approved') {
+        session_unset();
+        session_destroy();
+        header("Location: login.php?error=account_not_approved");
+        exit;
+    }
 }
 ?>
 
@@ -48,6 +55,7 @@ if (isset($_SESSION['user_id'])) {
                                 <li class="nav-item"><a class="nav-link" href="orderManagement.php">Orders</a></li>
                             <?php elseif ($user['role'] == 'admin'): ?>
                                 <li class="nav-item"><a class="nav-link" href="adminDashboard.php">Admin Dashboard</a></li>
+                                <li class="nav-item"><a class="nav-link" href="approveUsers.php">Approve Users</a></li>
                                 <li class="nav-item"><a class="nav-link" href="manageUsers.php">Manage Users</a></li>
                             <?php endif; ?>
                             <li class="nav-item"><a class="nav-link" href="logout.php">Logout</a></li>

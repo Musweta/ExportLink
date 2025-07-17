@@ -15,10 +15,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $user = $stmt->fetch();
 
         if ($user && password_verify($password, $user['password'])) {
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['role'] = $user['role'];
-            header("Location: " . ($user['role'] == 'admin' ? 'adminDashboard.php' : 'farmerDashboard.php'));
-            exit;
+            if ($user['approval_status'] != 'approved') {
+                echo "<div class='alert alert-danger'>Your account is not approved yet.</div>";
+            } else {
+                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['role'] = $user['role'];
+                // Log login activity
+                $stmt = $pdo->prepare("INSERT INTO activity_logs (user_id, action) VALUES (?, ?)");
+                $stmt->execute([$user['id'], "Logged in"]);
+                header("Location: " . ($user['role'] == 'admin' ? 'adminDashboard.php' : 'farmerDashboard.php'));
+                exit;
+            }
         } else {
             echo "<div class='alert alert-danger'>Invalid username or password.</div>";
         }
@@ -29,6 +36,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <!-- Responsive login form -->
 <div class="container mt-5">
     <h2>Login</h2>
+    <?php if (isset($_GET['error']) && $_GET['error'] == 'account_not_approved'): ?>
+        <div class='alert alert-danger'>Your account is not approved yet.</div>
+    <?php endif; ?>
     <form method="POST" action="" class="col-md-6 mx-auto">
         <div class="mb-3">
             <label for="username" class="form-label">Username</label>
@@ -40,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         </div>
         <div class="d-flex flex-column flex-md-row gap-2">
             <button type="submit" class="btn btn-primary">Login</button>
-            <a href="forgotpassword.php" class="btn btn-link">Forgot Password?</a>
+            <a href="forgot_password.php" class="btn btn-link">Forgot Password?</a>
         </div>
     </form>
 </div>

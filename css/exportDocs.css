@@ -1,14 +1,18 @@
-/* Styling for the manage users page */
+/* Styling for the export documentation page */
 body {
     background-color: #ffffff;
 }
 
-.btn-primary, .btn-danger {
+.btn-primary {
     background-color: #87ceeb;
     border-color: #87ceeb;
 }
 
-.btn-primary:hover, .btn-danger:hover {
+.btn-primary:hover {
     background-color: #6bb9d8;
     border-color: #6bb9d8;
+}
+
+.card {
+    margin-bottom: 20px;
 }
