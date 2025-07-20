@@ -3,11 +3,13 @@ require_once 'header.php';
 
 // Handle user login
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $username = filter_input(INPUT_POST, 'username', FILTER_SANITIZE_STRING);
-    $password = $_POST['password'];
+    // Sanitize username manually
+    $username = filter_input(INPUT_POST, 'username', FILTER_UNSAFE_RAW);
+    $username = trim(htmlspecialchars($username ?? ''));
+    $password = $_POST['password'] ?? '';
 
     // Validate inputs
-    if (!$username || !$password) {
+    if (empty($username) || empty($password)) {
         echo "<div class='alert alert-danger'>Please fill in all fields.</div>";
     } else {
         $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ?");
@@ -15,14 +17,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $user = $stmt->fetch();
 
         if ($user && password_verify($password, $user['password'])) {
-            if ($user['approval_status'] != 'approved') {
-                echo "<div class='alert alert-danger'>Your account is not approved yet.</div>";
+            // Exempt admins from approval check; non-admins require is_approved = 1
+            if ($user['role'] != 'admin' && !$user['is_approved']) {
+                echo "<div class='alert alert-warning'>Your account is awaiting admin approval.</div>";
             } else {
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['role'] = $user['role'];
-                // Log login activity
-                $stmt = $pdo->prepare("INSERT INTO activity_logs (user_id, action) VALUES (?, ?)");
-                $stmt->execute([$user['id'], "Logged in"]);
                 header("Location: " . ($user['role'] == 'admin' ? 'adminDashboard.php' : 'farmerDashboard.php'));
                 exit;
             }
@@ -36,9 +36,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <!-- Responsive login form -->
 <div class="container mt-5">
     <h2>Login</h2>
-    <?php if (isset($_GET['error']) && $_GET['error'] == 'account_not_approved'): ?>
-        <div class='alert alert-danger'>Your account is not approved yet.</div>
-    <?php endif; ?>
     <form method="POST" action="" class="col-md-6 mx-auto">
         <div class="mb-3">
             <label for="username" class="form-label">Username</label>

@@ -3,23 +3,27 @@ require_once 'header.php';
 
 // Handle user registration
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $username = filter_input(INPUT_POST, 'username', FILTER_SANITIZE_STRING);
+    // Sanitize username and role manually
+    $username = filter_input(INPUT_POST, 'username', FILTER_UNSAFE_RAW);
+    $username = trim(htmlspecialchars($username ?? ''));
     $email = filter_input(INPUT_POST, 'email', FILTER_SANITIZE_EMAIL);
-    $password = password_hash($_POST['password'], PASSWORD_BCRYPT);
-    $role = filter_input(INPUT_POST, 'role', FILTER_SANITIZE_STRING);
+    $password = password_hash($_POST['password'] ?? '', PASSWORD_BCRYPT);
+    $role = filter_input(INPUT_POST, 'role', FILTER_UNSAFE_RAW);
+    $role = trim(htmlspecialchars($role ?? ''));
 
     // Validate inputs
-    if (!$username || !$email || !$password || !in_array($role, ['farmer', 'importer', 'admin'])) {
+    if (empty($username) || empty($email) || empty($password) || !in_array($role, ['farmer', 'importer', 'admin'])) {
         echo "<div class='alert alert-danger'>Invalid input data.</div>";
     } else {
         try {
-            $stmt = $pdo->prepare("INSERT INTO users (username, email, password, role, approval_status) VALUES (?, ?, ?, ?, 'pending')");
-            $stmt->execute([$username, $email, $password, $role]);
-            // Log activity
-            $user_id = $pdo->lastInsertId();
-            $stmt = $pdo->prepare("INSERT INTO activity_logs (user_id, action) VALUES (?, ?)");
-            $stmt->execute([$user_id, "Registered as $role"]);
-            echo "<div class='alert alert-success'>Registration successful! Awaiting admin approval.</div>";
+            // Exempt admins from approval by setting is_approved = 1
+            $is_approved = $role == 'admin' ? 1 : 0;
+            $stmt = $pdo->prepare("INSERT INTO users (username, email, password, role, is_approved) VALUES (?, ?, ?, ?, ?)");
+            $stmt->execute([$username, $email, $password, $role, $is_approved]);
+            $message = $role == 'admin' 
+                ? "Registration successful! Please <a href='login.php'>login</a>." 
+                : "Registration successful! Awaiting admin approval.";
+            echo "<div class='alert alert-success'>$message</div>";
         } catch (PDOException $e) {
             echo "<div class='alert alert-danger'>Error: " . htmlspecialchars($e->getMessage()) . "</div>";
         }
@@ -49,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <option value="" disabled selected>Select role</option>
                 <option value="farmer">Farmer</option>
                 <option value="importer">Importer</option>
-                <option value="admin">Administrator</option>
+                <option value="admin">Admin</option>
             </select>
         </div>
         <button type="submit" class="btn btn-primary">Register</button>
