@@ -1,5 +1,6 @@
 <?php
 require_once 'header.php';
+require_once 'db_conn.php';
 
 // Restrict access to admins
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'admin') {
@@ -7,25 +8,34 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'admin') {
     exit;
 }
 
-// Fetch statistics
-$user_count = $pdo->query("SELECT COUNT(*) as count FROM users")->fetch()['count'];
-$pending_users = $pdo->query("SELECT COUNT(*) as count FROM users WHERE approval_status = 'pending'")->fetch()['count'];
-$order_count = $pdo->query("SELECT COUNT(*) as count FROM orders")->fetch()['count'];
-$activity_logs = $pdo->query("SELECT a.*, u.username FROM activity_logs a JOIN users u ON a.user_id = u.id ORDER BY a.created_at DESC LIMIT 10")->fetchAll();
-
-// Generate report (CSV download)
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['generate_report'])) {
-    header('Content-Type: text/csv');
-    header('Content-Disposition: attachment; filename="activity_report.csv"');
-    $output = fopen('php://output', 'w');
-    fputcsv($output, ['ID', 'Username', 'Action', 'Timestamp']);
-    foreach ($activity_logs as $log) {
-        fputcsv($output, [$log['id'], $log['username'], $log['action'], $log['created_at']]);
-    }
-    fclose($output);
-    exit;
+// Count unapproved users
+try {
+    $stmt = $pdo->query("SELECT COUNT(*) as count FROM users WHERE is_approved = 0");
+    $unapproved_count = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
+} catch (PDOException $e) {
+    error_log("Admin dashboard error: " . $e->getMessage());
+    $unapproved_count = 'N/A';
+    echo "<div class='alert alert-danger'>Error fetching unapproved users: " . htmlspecialchars($e->getMessage()) . "</div>";
 }
 ?>
+
+<div class="container mt-5">
+    <h2>Admin Dashboard</h2>
+    <p>Welcome, Admin!</p>
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5 class="card-title">Pending Approvals</h5>
+            <p class="card-text"><?php echo htmlspecialchars($unapproved_count); ?> user(s) awaiting approval.</p>
+            <a href="manageUsers.php" class="btn btn-primary">Manage Users</a>
+        </div>
+    </div>
+    <div class="d-flex flex-column flex-md-row gap-2">
+        <a href="productListing.php" class="btn btn-primary">View Products</a>
+        <a href="orderManagement.php" class="btn btn-primary">View Orders</a>
+    </div>
+</div>
+
+<?php require_once 'footer.php'; ?>
 
 <!-- Responsive admin dashboard -->
 <div class="container mt-5">

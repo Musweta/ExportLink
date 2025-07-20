@@ -1,6 +1,7 @@
 <?php
 // Include header with database connection
 require_once 'header.php';
+require_once 'db_conn.php';
 ?>
 
 <!-- Responsive main content -->

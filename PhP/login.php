@@ -1,5 +1,6 @@
 <?php
 require_once 'header.php';
+require_once 'db_conn.php';
 
 // Handle user login
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -12,22 +13,37 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (empty($username) || empty($password)) {
         echo "<div class='alert alert-danger'>Please fill in all fields.</div>";
     } else {
-        $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ?");
-        $stmt->execute([$username]);
-        $user = $stmt->fetch();
+        try {
+            $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ?");
+            $stmt->execute([$username]);
+            $user = $stmt->fetch();
 
-        if ($user && password_verify($password, $user['password'])) {
-            // Exempt admins from approval check; non-admins require is_approved = 1
-            if ($user['role'] != 'admin' && !$user['is_approved']) {
-                echo "<div class='alert alert-warning'>Your account is awaiting admin approval.</div>";
+            if ($user && password_verify($password, $user['password'])) {
+                // Debug: Log is_approved and role
+                error_log("Login attempt: username=$username, role={$user['role']}, is_approved=" . ($user['is_approved'] ?? 'NULL'));
+
+                // Exempt admins from approval check; non-admins require is_approved = 1
+                if ($user['role'] != 'admin' && !($user['is_approved'] ?? false)) {
+                    echo "<div class='alert alert-warning'>Your account is awaiting admin approval.</div>";
+                } else {
+                    $_SESSION['user_id'] = $user['id'];
+                    $_SESSION['role'] = $user['role'];
+                    // Redirect based on role
+                    $redirect = match ($user['role']) {
+                        'admin' => 'adminDashboard.php',
+                        'farmer' => 'farmerDashboard.php',
+                        'importer' => 'importerDashboard.php',
+                        default => 'index.php' // Fallback
+                    };
+                    header("Location: $redirect");
+                    exit;
+                }
             } else {
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['role'] = $user['role'];
-                header("Location: " . ($user['role'] == 'admin' ? 'adminDashboard.php' : 'farmerDashboard.php'));
-                exit;
+                echo "<div class='alert alert-danger'>Invalid username or password.</div>";
             }
-        } else {
-            echo "<div class='alert alert-danger'>Invalid username or password.</div>";
+        } catch (PDOException $e) {
+            error_log("Login error: " . $e->getMessage());
+            echo "<div class='alert alert-danger'>Error: Database issue. Please try again later.</div>";
         }
     }
 }
@@ -47,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         </div>
         <div class="d-flex flex-column flex-md-row gap-2">
             <button type="submit" class="btn btn-primary">Login</button>
-            <a href="forgot_password.php" class="btn btn-link">Forgot Password?</a>
+            <a href="forgotPassword.php" class="btn btn-link">Forgot Password?</a>
         </div>
     </form>
 </div>
