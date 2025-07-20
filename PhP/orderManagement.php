@@ -158,7 +158,7 @@ $orders = $stmt->fetchAll();
             </div>
             <div class="mb-3">
                 <label for="payment_terms" class="form-label">Payment Terms</label>
-                <input type="text" class="form-control" id="payment_terms" name="payment_terms" required placeholder="e.g., Net 30">
+                <input type="text" class="form-control" id="payment_terms" name="payment_terms" required placeholder="e.g.Bank Cheque, M-Pesa">
             </div>
             <div class="mb-3">
                 <label for="currency" class="form-label">Currency</label>

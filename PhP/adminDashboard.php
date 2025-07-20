@@ -31,7 +31,7 @@ try {
     </div>
     <div class="d-flex flex-column flex-md-row gap-2">
         <a href="adminOrderManagement.php" class="btn btn-primary">View All Orders</a>
-        <a href="productListing.php" class="btn btn-primary">View Products</a>
+        <a href="viewProducts.php" class="btn btn-primary">View Products</a>
     </div>
 </div>
 

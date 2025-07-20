@@ -91,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <option value="" disabled selected>Select role</option>
                 <option value="farmer">Farmer</option>
                 <option value="importer">Importer</option>
-                <option value="admin">Admin</option>
+                <option value="admin" hidden>Admin</option>
             </select>
         </div>
         <!-- Importer document uploads (hidden by default) -->

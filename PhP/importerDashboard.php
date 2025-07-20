@@ -22,7 +22,7 @@ $orders = $stmt->fetchAll();
 <div class="container mt-5">
     <h2>Dashboard</h2>
     <p>Welcome, <?php echo htmlspecialchars($_SESSION['role']); ?>!</p>
-    <a href="productListing.php" class="btn btn-primary mb-3">Browse Products</a>
+    <a href="viewProducts.php" class="btn btn-primary mb-3">Browse Products</a>
     <h3>Your Orders</h3>
     <div class="table-responsive">
         <table class="table">
