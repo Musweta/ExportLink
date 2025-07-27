@@ -1,23 +1,30 @@
 <?php
+// Include header with session and database setup
 require_once 'header.php';
 require_once 'db_conn.php';
 
-// Restrict to importers and admins
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['importer', 'admin'])) {
+    // Redirect unauthorized users to login
     header("Location: login.php");
     exit;
 }
 
-// Fetch products
-try {
-    $stmt = $pdo->query("SELECT id, name, price, image_path FROM products");
-    $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    error_log("View products error: " . $e->getMessage());
-    echo "<div class='alert alert-danger'>Error fetching products: " . htmlspecialchars($e->getMessage()) . "</div>";
-}
+$stmt = $pdo->query("SELECT id, name, price, image_path FROM products");
+$products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ExportLink - View Products</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f0f8ff; }
+        .container { background-color: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
 <div class="container mt-5">
     <h2>View Products</h2>
     <div class="row row-cols-1 row-cols-md-3 g-4">
@@ -36,7 +43,7 @@ try {
     </div>
     <?php if (isset($_GET['product_id'])): ?>
         <?php
-        $stmt = $pdo->prepare("SELECT * FROM products WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT id, name, type, description, price, quantity, origin, grade, image_path FROM products WHERE id = ?");
         $stmt->execute([$_GET['product_id']]);
         $product = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($product): ?>
@@ -55,14 +62,10 @@ try {
                             <p><strong>Quantity Available:</strong> <?php echo htmlspecialchars($product['quantity']); ?></p>
                             <p><strong>Origin:</strong> <?php echo htmlspecialchars($product['origin']); ?></p>
                             <p><strong>Grade:</strong> <?php echo htmlspecialchars($product['grade']); ?></p>
-                            <p><strong>HS Code:</strong> <?php echo htmlspecialchars($product['hs_code']); ?></p>
-                            <p><strong>Certification:</strong> <?php echo htmlspecialchars($product['certification'] ?? 'N/A'); ?></p>
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" onclick="window.history.back();">Close</button>
-                            <?php if ($_SESSION['role'] == 'importer'): ?>
-                                <a href="orderManagement.php?product_id=<?php echo $product['id']; ?>" class="btn btn-primary">Place Order</a>
-                            <?php endif; ?>
+                            <a href="orderManagement.php?product_id=<?php echo $product['id']; ?>" class="btn btn-primary">Place Order</a>
                         </div>
                     </div>
                 </div>
@@ -72,5 +75,4 @@ try {
         <?php endif; ?>
     <?php endif; ?>
 </div>
-
 <?php require_once 'footer.php'; ?>

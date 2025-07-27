@@ -1,13 +1,23 @@
 <?php
+// Start the PHP session to manage user login state
 session_start();
+// Include database connection file
 require_once 'db_conn.php';
+
+// Enable error reporting for debugging 
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+// Initialize $user array with default values to avoid undefined index errors
+$user = ['role' => '', 'username' => '', 'is_approved' => 0];
 
 // Fetch user data if logged in
 if (isset($_SESSION['user_id'])) {
     try {
         $stmt = $pdo->prepare("SELECT username, role, is_approved FROM users WHERE id = ?");
         $stmt->execute([$_SESSION['user_id']]);
-        $user = $stmt->fetch();
+        $user = $stmt->fetch() ?: $user; // Use fetched data or default
         if (!$user) {
             session_unset();
             session_destroy();
@@ -34,6 +44,8 @@ if (isset($_SESSION['user_id'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ExportLink</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Include Bootstrap JS for interactive elements like modals and buttons -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <style>
         body { background-color: #f0f8ff; }
         .navbar { background-color: #4682b4; }
@@ -58,12 +70,11 @@ if (isset($_SESSION['user_id'])) {
                         'farmer' => 'farmerDashboard.php',
                         'importer' => 'importerDashboard.php',
                         default => 'index.php',
-                    };
-                    ?>">Dashboard</a>
-                    <?php if ($_SESSION['role'] == 'farmer' || $_SESSION['role'] == 'importer'): ?>
+                    }; ?>">Dashboard</a>
+                    <?php if (in_array($user['role'], ['farmer', 'importer'])): ?>
                         <a class="nav-link" href="profile.php">Profile</a>
                     <?php endif; ?>
-                    <a class="nav-link" href="logout.php">Logout</a>
+                    <a class="nav-link" href="login.php?logout=1">Logout</a>
                 <?php else: ?>
                     <a class="nav-link" href="login.php">Login</a>
                     <a class="nav-link" href="registration.php">Register</a>

@@ -1,40 +1,72 @@
 <?php
+// Include header with session and database setup
 require_once 'header.php';
 require_once 'db_conn.php';
 
-// Restrict access to admins
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'admin') {
+    // Redirect non-admins to login
     header("Location: login.php");
     exit;
 }
 
-// Count unapproved users
-try {
-    $stmt = $pdo->query("SELECT COUNT(*) as count FROM users WHERE is_approved = 0");
-    $unapproved_count = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
-} catch (PDOException $e) {
-    error_log("Admin dashboard error: " . $e->getMessage());
-    $unapproved_count = 'N/A';
-    echo "<div class='alert alert-danger'>Error fetching unapproved users: " . htmlspecialchars($e->getMessage()) . "</div>";
-}
+// Fetch report data
+$stmt = $pdo->query("SELECT status, COUNT(*) as count FROM orders GROUP BY status");
+$order_stats = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+$total_orders = array_sum($order_stats);
+$pending = $order_stats['pending'] ?? 0;
+$confirmed = $order_stats['confirmed'] ?? 0;
+$shipped = $order_stats['shipped'] ?? 0;
+$delivered = $order_stats['delivered'] ?? 0;
+$stmt = $pdo->query("SELECT COUNT(*) as count FROM users");
+$user_count = $stmt->fetch()['count'];
 ?>
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ExportLink - Admin Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f0f8ff; }
+        .container { background-color: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        canvas { max-width: 100%; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
 <div class="container mt-5">
     <h2>Admin Dashboard</h2>
-    <p>Welcome, Admin!</p>
     <div class="card mb-3">
         <div class="card-body">
-            <h5 class="card-title">Pending Approvals</h5>
-            <p class="card-text"><?php echo htmlspecialchars($unapproved_count); ?> user(s) awaiting approval.</p>
-            <a href="manageUsers.php" class="btn btn-primary">Manage Users</a>
+            <h5 class="card-title">Order Statistics</h5>
+            <canvas id="orderChart"></canvas>
+            <p>Total Orders: <?php echo $total_orders; ?></p>
+            <p>Pending: <?php echo $pending; ?></p>
+            <p>Confirmed: <?php echo $confirmed; ?></p>
+            <p>Shipped: <?php echo $shipped; ?></p>
+            <p>Delivered: <?php echo $delivered; ?></p>
+            <p>Total Users: <?php echo $user_count; ?></p>
         </div>
     </div>
-    <div class="d-flex flex-column flex-md-row gap-2">
-        <a href="adminOrderManagement.php" class="btn btn-primary">View All Orders</a>
-        <a href="viewProducts.php" class="btn btn-primary">View Products</a>
-    </div>
+    <a href="orderManagement.php" class="btn btn-primary mb-3">View All Orders</a>
+    <a href="manageUsers.php" class="btn btn-primary mb-3">Manage Users</a>
 </div>
-
+<script>
+    const ctx = document.getElementById('orderChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Pending', 'Confirmed', 'Shipped', 'Delivered'],
+            datasets: [{
+                label: 'Order Status',
+                data: [<?php echo $pending; ?>, <?php echo $confirmed; ?>, <?php echo $shipped; ?>, <?php echo $delivered; ?>],
+                backgroundColor: ['#ff6384', '#36a2eb', '#ffcd56', '#4bc0c0']
+            }]
+        },
+        options: { scales: { y: { beginAtZero: true } } }
+    });
+</script>
 <?php require_once 'footer.php'; ?>
 
 <!-- Responsive admin dashboard -->

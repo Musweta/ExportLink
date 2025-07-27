@@ -1,15 +1,16 @@
 <?php
+// Include header with session and database setup
 require_once 'header.php';
 require_once 'db_conn.php';
 
-// Restrict to farmers
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'farmer') {
+    // Redirect non-farmers to login
     header("Location: login.php");
     exit;
 }
 
-// Handle product creation
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_product'])) {
+    // Process product creation form
     $name = filter_input(INPUT_POST, 'name', FILTER_UNSAFE_RAW);
     $type = filter_input(INPUT_POST, 'type', FILTER_UNSAFE_RAW);
     $description = filter_input(INPUT_POST, 'description', FILTER_UNSAFE_RAW);
@@ -17,8 +18,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_product'])) {
     $quantity = filter_input(INPUT_POST, 'quantity', FILTER_SANITIZE_NUMBER_INT);
     $origin = filter_input(INPUT_POST, 'origin', FILTER_UNSAFE_RAW);
     $grade = filter_input(INPUT_POST, 'grade', FILTER_UNSAFE_RAW);
-    $hs_code = filter_input(INPUT_POST, 'hs_code', FILTER_UNSAFE_RAW);
-    $certification = filter_input(INPUT_POST, 'certification', FILTER_UNSAFE_RAW);
 
     $image_path = null;
     if (isset($_FILES['image']) && $_FILES['image']['error'] == UPLOAD_ERR_OK) {
@@ -28,12 +27,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_product'])) {
         move_uploaded_file($_FILES['image']['tmp_name'], $image_path);
     }
 
-    if (empty($name) || empty($type) || empty($price) || $quantity <= 0 || empty($origin) || empty($grade) || empty($hs_code)) {
+    if (empty($name) || empty($type) || empty($price) || $quantity <= 0 || empty($origin) || empty($grade)) {
         echo "<div class='alert alert-danger'>Invalid product details.</div>";
     } else {
         try {
-            $stmt = $pdo->prepare("INSERT INTO products (farmer_id, name, type, description, price, quantity, origin, grade, hs_code, certification, image_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$_SESSION['user_id'], $name, $type, $description, $price, $quantity, $origin, $grade, $hs_code, $certification, $image_path]);
+            $stmt = $pdo->prepare("INSERT INTO products (farmer_id, name, type, description, price, quantity, origin, grade, image_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$_SESSION['user_id'], $name, $type, $description, $price, $quantity, $origin, $grade, $image_path]);
             echo "<div class='alert alert-success'>Product added successfully!</div>";
         } catch (PDOException $e) {
             echo "<div class='alert alert-danger'>Error: " . htmlspecialchars($e->getMessage()) . "</div>";
@@ -41,7 +40,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_product'])) {
     }
 }
 ?>
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ExportLink - Product Listing</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f0f8ff; }
+        .container { background-color: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
 <div class="container mt-5">
     <h2>Product Listing</h2>
     <h3>Add New Product</h3>
@@ -75,28 +86,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_product'])) {
             <input type="text" class="form-control" id="grade" name="grade" required>
         </div>
         <div class="mb-3">
-            <label for="hs_code" class="form-label">HS Code</label>
-            <input type="text" class="form-control" id="hs_code" name="hs_code" required>
-        </div>
-        <div class="mb-3">
-            <label for="certification" class="form-label">Certification</label>
-            <textarea class="form-control" id="certification" name="certification"></textarea>
-        </div>
-        <div class="mb-3">
             <label for="image" class="form-label">Product Image</label>
             <input type="file" class="form-control" id="image" name="image" accept="image/*">
         </div>
         <button type="submit" name="create_product" class="btn btn-primary">Add Product</button>
     </form>
+</div>
 
-    <?php
-    // Fetch products for the farmer
-    $stmt = $pdo->prepare("SELECT * FROM products WHERE farmer_id = ?");
-    $stmt->execute([$_SESSION['user_id']]);
-    $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    ?>
-    <?php
-      /*
+      
     <h3>Available Products</h3>
     <div class="row row-cols-1 row-cols-md-3 g-4">
         <?php foreach ($products as $product): ?>
@@ -148,6 +145,5 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_product'])) {
         <?php endif; ?>
     <?php endif; ?>
 </div>
-*/
 ?>
 <?php require_once 'footer.php'; ?>
