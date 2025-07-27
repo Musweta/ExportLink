@@ -17,8 +17,15 @@ $pending = $order_stats['pending'] ?? 0;
 $confirmed = $order_stats['confirmed'] ?? 0;
 $shipped = $order_stats['shipped'] ?? 0;
 $delivered = $order_stats['delivered'] ?? 0;
+
+$stmt = $pdo->query("SELECT COUNT(*) as count FROM users WHERE role = 'farmer'");
+$farmer_count = $stmt->fetch()['count'];
+$stmt = $pdo->query("SELECT COUNT(*) as count FROM users WHERE role = 'importer'");
+$importer_count = $stmt->fetch()['count'];
 $stmt = $pdo->query("SELECT COUNT(*) as count FROM users");
-$user_count = $stmt->fetch()['count'];
+$total_users = $stmt->fetch()['count'];
+$stmt = $pdo->query("SELECT COUNT(*) as count FROM products");
+$total_products = $stmt->fetch()['count'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -46,15 +53,25 @@ $user_count = $stmt->fetch()['count'];
             <p>Confirmed: <?php echo $confirmed; ?></p>
             <p>Shipped: <?php echo $shipped; ?></p>
             <p>Delivered: <?php echo $delivered; ?></p>
-            <p>Total Users: <?php echo $user_count; ?></p>
+        </div>
+    </div>
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5 class="card-title">System Report</h5>
+            <p>Farmers: <?php echo $farmer_count; ?></p>
+            <p>Importers: <?php echo $importer_count; ?></p>
+            <p>Total Users: <?php echo $total_users; ?></p>
+            <p>Total Orders: <?php echo $total_orders; ?></p>
+            <p>Total Products: <?php echo $total_products; ?></p>
+            <canvas id="systemChart" style="max-height: 200px;"></canvas>
         </div>
     </div>
     <a href="orderManagement.php" class="btn btn-primary mb-3">View All Orders</a>
     <a href="manageUsers.php" class="btn btn-primary mb-3">Manage Users</a>
 </div>
 <script>
-    const ctx = document.getElementById('orderChart').getContext('2d');
-    new Chart(ctx, {
+    const ctxOrder = document.getElementById('orderChart').getContext('2d');
+    new Chart(ctxOrder, {
         type: 'bar',
         data: {
             labels: ['Pending', 'Confirmed', 'Shipped', 'Delivered'],
@@ -66,70 +83,18 @@ $user_count = $stmt->fetch()['count'];
         },
         options: { scales: { y: { beginAtZero: true } } }
     });
-</script>
-<!-- Responsive admin dashboard -->
-<div class="container mt-5">
-    <h2>Admin Dashboard</h2>
-    <div class="row row-cols-1 row-cols-md-3 g-4">
-        <div class="col">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Total Users</h5>
-                    <p class="card-text"><?php echo $user_count; ?></p>
-                    <a href="manageUsers.php" class="btn btn-primary">Manage Users</a>
-                </div>
-            </div>
-        </div>
-        <div class="col">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Pending Approvals</h5>
-                    <p class="card-text"><?php echo $pending_users; ?></p>
-                    <a href="approveUsers.php" class="btn btn-primary">Review Approvals</a>
-                </div>
-            </div>
-        </div>
-        <div class="col">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Total Orders</h5>
-                    <p class="card-text"><?php echo $order_count; ?></p>
-                    <a href="orderManagement.php" class="btn btn-primary">View Orders</a>
-                </div>
-            </div>
-        </div>
-    </div>
-    <!-- Recent Activity -->
-    <h3 class="mt-4">Recent Activity</h3>
-    <div class="table-responsive">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Username</th>
-                    <th>Action</th>
-                    <th>Timestamp</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if (empty($activity_logs)): ?>
-                    <tr><td colspan="3">No activity found.</td></tr>
-                <?php else: ?>
-                    <?php foreach ($activity_logs as $log): ?>
-                        <tr>
-                            <td><?php echo htmlspecialchars($log['username']); ?></td>
-                            <td><?php echo htmlspecialchars($log['action']); ?></td>
-                            <td><?php echo htmlspecialchars($log['created_at']); ?></td>
-                        </tr>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </tbody>
-        </table>
-    </div>
-    <!-- Report Generation -->
-    <form method="POST" action="">
-        <input type="hidden" name="generate_report" value="1">
-        <button type="submit" class="btn btn-primary mt-3">Download Activity Report (CSV)</button>
-    </form>
-</div>
 
+    const ctxSystem = document.getElementById('systemChart').getContext('2d');
+    new Chart(ctxSystem, {
+        type: 'pie',
+        data: {
+            labels: ['Farmers', 'Importers', 'Orders', 'Products'],
+            datasets: [{
+                data: [<?php echo $farmer_count; ?>, <?php echo $importer_count; ?>, <?php echo $total_orders; ?>, <?php echo $total_products; ?>],
+                backgroundColor: ['#ff6384', '#36a2eb', '#ffcd56', '#4bc0c0']
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+</script>
 <?php require_once 'footer.php'; ?>
