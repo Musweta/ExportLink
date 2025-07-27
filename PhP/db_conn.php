@@ -9,6 +9,13 @@ try {
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
     ]);
+    // index.php, after db_conn.php
+if (isset($_SESSION['user_id'])) {
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
+    $stmt->execute([$_SESSION['user_id']]);
+    $user = $stmt->fetch();
+}
+
 } catch (PDOException $e) {
     // Handle connection errors 
     die("Connection failed: " . $e->getMessage());  

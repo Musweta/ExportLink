@@ -18,6 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_product'])) {
     $quantity = filter_input(INPUT_POST, 'quantity', FILTER_SANITIZE_NUMBER_INT);
     $origin = filter_input(INPUT_POST, 'origin', FILTER_UNSAFE_RAW);
     $grade = filter_input(INPUT_POST, 'grade', FILTER_UNSAFE_RAW);
+    $hs_code = filter_input(INPUT_POST, 'hs_code', FILTER_UNSAFE_RAW);
 
     $image_path = null;
     if (isset($_FILES['image']) && $_FILES['image']['error'] == UPLOAD_ERR_OK) {
@@ -27,12 +28,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_product'])) {
         move_uploaded_file($_FILES['image']['tmp_name'], $image_path);
     }
 
-    if (empty($name) || empty($type) || empty($price) || $quantity <= 0 || empty($origin) || empty($grade)) {
+    if (empty($name) || empty($type) || empty($price) || $quantity <= 0 || empty($origin) || empty($grade) || empty($hs_code)) {
         echo "<div class='alert alert-danger'>Invalid product details.</div>";
     } else {
         try {
-            $stmt = $pdo->prepare("INSERT INTO products (farmer_id, name, type, description, price, quantity, origin, grade, image_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$_SESSION['user_id'], $name, $type, $description, $price, $quantity, $origin, $grade, $image_path]);
+            $stmt = $pdo->prepare("INSERT INTO products (farmer_id, name, type, description, price, quantity, origin, grade, image_path, hs_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$_SESSION['user_id'], $name, $type, $description, $price, $quantity, $origin, $grade, $image_path, $hs_code]);
             echo "<div class='alert alert-success'>Product added successfully!</div>";
         } catch (PDOException $e) {
             echo "<div class='alert alert-danger'>Error: " . htmlspecialchars($e->getMessage()) . "</div>";
@@ -86,13 +87,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['create_product'])) {
             <input type="text" class="form-control" id="grade" name="grade" required>
         </div>
         <div class="mb-3">
+            <label for="hs_code" class="form-label">HS Code</label>
+            <input type="text" class="form-control" id="hs_code" name="hs_code" required>
+        </div>
+        <div class="mb-3">
             <label for="image" class="form-label">Product Image</label>
             <input type="file" class="form-control" id="image" name="image" accept="image/*">
         </div>
         <button type="submit" name="create_product" class="btn btn-primary">Add Product</button>
     </form>
 </div>
-
       
     <h3>Available Products</h3>
     <div class="row row-cols-1 row-cols-md-3 g-4">

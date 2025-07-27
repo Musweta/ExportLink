@@ -14,8 +14,8 @@ $stmt = $pdo->prepare("SELECT * FROM products WHERE farmer_id = ?");
 $stmt->execute([$_SESSION['user_id']]);
 $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Fetch report data
-$stmt = $pdo->query("SELECT status, COUNT(*) as count FROM orders WHERE product_id IN (SELECT id FROM products WHERE farmer_id = ?) GROUP BY status");
+// Fetch summary statistics
+$stmt = $pdo->prepare("SELECT status, COUNT(*) as count FROM orders WHERE product_id IN (SELECT id FROM products WHERE farmer_id = ?) GROUP BY status");
 $order_stats = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 $total_orders = array_sum($order_stats);
 $pending = $order_stats['pending'] ?? 0;
@@ -51,6 +51,7 @@ $delivered = $order_stats['delivered'] ?? 0;
             <p>Delivered: <?php echo $delivered; ?></p>
         </div>
     </div>
+    <a href="productListing.php" class="btn btn-primary mb-3">List Products</a>
     <a href="orderManagement.php" class="btn btn-primary mb-3">Manage Orders</a>
     <h3>View Products</h3>
     <div class="row row-cols-1 row-cols-md-3 g-4">

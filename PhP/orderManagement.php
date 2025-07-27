@@ -2,9 +2,8 @@
 // Include header with session and database setup
 require_once 'header.php';
 require_once 'db_conn.php';
-require_once 'vendor/autoload.php'; // Assuming Composer with mPDF
-
-use Mpdf\Mpdf;
+require_once '../dompdf/autoload.inc.php'; // Assuming Dompdf is installed via Composer
+use Dompdf\Dompdf;
 
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['farmer', 'importer', 'admin'])) {
     // Redirect unauthorized users to login
@@ -21,10 +20,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && $_SESSION['role'] == 'importer' && i
     $currency = filter_input(INPUT_POST, 'currency', FILTER_UNSAFE_RAW);
     $delivery_address = filter_input(INPUT_POST, 'delivery_address', FILTER_UNSAFE_RAW);
 
-    if (empty($product_id) || empty($quantity) || $quantity <= 0 || empty($payment_terms) || !in_array($currency, ['USD', 'KES', 'EUR']) || empty($delivery_address)) {
+    // Check importer details (simulated license validation)
+    $stmt = $pdo->prepare("SELECT certification_path FROM users WHERE id = ?");
+    $stmt->execute([$_SESSION['user_id']]);
+    $importer = $stmt->fetch();
+    if (!$importer || !$importer['certification_path']) {
+        echo "<div class='alert alert-danger'>Importer license not verified. Please upload certification.</div>";
+    } elseif (empty($product_id) || empty($quantity) || $quantity <= 0 || empty($payment_terms) || !in_array($currency, ['USD', 'KES', 'EUR']) || empty($delivery_address)) {
         echo "<div class='alert alert-danger'>Invalid order details.</div>";
     } else {
-        $stmt = $pdo->prepare("SELECT quantity, price FROM products WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT quantity, price, farmer_id, name, type, hs_code, origin, grade FROM products WHERE id = ?");
         $stmt->execute([$product_id]);
         $product = $stmt->fetch();
         if ($product && $quantity <= $product['quantity']) {
@@ -35,22 +40,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && $_SESSION['role'] == 'importer' && i
                 $order_id = $pdo->lastInsertId();
                 $stmt = $pdo->prepare("UPDATE products SET quantity = quantity - ? WHERE id = ?");
                 $stmt->execute([$quantity, $product_id]);
-                $stmt = $pdo->prepare("SELECT p.*, u1.username as farmer, u2.username as importer, u2.email 
-                    FROM products p JOIN users u1 ON p.farmer_id = u1.id 
-                    JOIN users u2 ON u2.id = ? WHERE p.id = ?");
-                $stmt->execute([$_SESSION['user_id'], $product_id]);
+                $stmt = $pdo->prepare("SELECT u.username as farmer, u.email as importer_email, p.* FROM products p JOIN users u ON p.farmer_id = u.id WHERE p.id = ?");
+                $stmt->execute([$product_id]);
                 $product = $stmt->fetch();
                 $conversion_rates = ['USD' => 1, 'KES' => 130, 'EUR' => 0.185];
                 $base_price = $product['price'];
                 $converted_price = $base_price * $conversion_rates[$currency];
                 $total = $quantity * $converted_price;
 
-                // Generate Invoice PDF
+                // Prepare invoice content for Dompdf
                 $invoice_content = "<h2>Commercial Invoice</h2>
                     Invoice Number: INV-$order_id<br>
                     Date: " . date('Y-m-d H:i:s') . "<br>
                     Seller: {$product['farmer']}<br>
-                    Importer: {$product['importer']} ({$product['email']})<br>
+                    Importer: {$user['username']} ({$user['email']})<br>
                     Product: {$product['name']}<br>
                     Type: {$product['type']}<br>
                     Quantity: $quantity<br>
@@ -61,29 +64,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && $_SESSION['role'] == 'importer' && i
                     Country of Origin: {$product['origin']}<br>
                     Grade: {$product['grade']}<br>
                     Delivery Address: $delivery_address";
-                $mpdf = new Mpdf();
-                $mpdf->WriteHTML($invoice_content);
-                $invoice_path = "../Uploads/invoice_$order_id.pdf";
-                $mpdf->Output($invoice_path, 'F');
 
-                // Generate Receipt PDF
-                $receipt_content = "<h2>Receipt</h2>
-                    Order ID: $order_id<br>
-                    Date: " . date('Y-m-d H:i:s') . "<br>
-                    Product: {$product['name']}<br>
-                    Quantity: $quantity<br>
-                    Total: $total $currency<br>
-                    Payment Terms: $payment_terms";
-                $mpdf = new Mpdf();
-                $mpdf->WriteHTML($receipt_content);
-                $receipt_path = "../Uploads/receipt_$order_id.pdf";
-                $mpdf->Output($receipt_path, 'F');
-
+                // Store invoice content for later retrieval
                 $stmt = $pdo->prepare("INSERT INTO export_documents (order_id, document_type, document_content) VALUES (?, ?, ?)");
-                $stmt->execute([$order_id, 'invoice', $invoice_path]);
-                $stmt->execute([$order_id, 'receipt', $receipt_path]);
+                $stmt->execute([$order_id, 'invoice', $invoice_content]);
                 $pdo->commit();
-                echo "<div class='alert alert-success'>Order placed successfully! PDFs generated.</div>";
+                echo "<div class='alert alert-success'>Order placed successfully! <a href='generatedocs.php?order_id=$order_id&action=view' target='_blank'>View Invoice</a> | <a href='generatedocs.php?order_id=$order_id&action=download' target='_blank'>Download Invoice</a></div>";
             } catch (PDOException $e) {
                 $pdo->rollBack();
                 echo "<div class='alert alert-danger'>Error: " . htmlspecialchars($e->getMessage()) . "</div>";
@@ -94,11 +80,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && $_SESSION['role'] == 'importer' && i
     }
 }
 
-// Handle order status update (farmers)
+// Handle order status update and export document upload (farmers)
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && $_SESSION['role'] == 'farmer' && isset($_POST['update_status'])) {
-    // Process status update for farmers
+    // Process status update and export document upload
     $order_id = filter_input(INPUT_POST, 'order_id', FILTER_SANITIZE_NUMBER_INT);
     $status = filter_input(INPUT_POST, 'status', FILTER_UNSAFE_RAW);
+    $export_doc_path = null;
+    if (isset($_FILES['export_doc']) && $_FILES['export_doc']['error'] == UPLOAD_ERR_OK) {
+        $upload_dir = '../Uploads/';
+        $file_name = $_SESSION['user_id'] . '_' . $order_id . '_' . time() . '_' . basename($_FILES['export_doc']['name']);
+        $export_doc_path = $upload_dir . $file_name;
+        move_uploaded_file($_FILES['export_doc']['tmp_name'], $export_doc_path);
+    }
 
     if (empty($order_id) || !in_array($status, ['pending', 'confirmed', 'shipped'])) {
         echo "<div class='alert alert-danger'>Invalid order or status.</div>";
@@ -111,9 +104,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && $_SESSION['role'] == 'farmer' && iss
                 $tracking_number = 'TRK-' . strtoupper(substr(md5($order_id . time()), 0, 10));
                 $stmt = $pdo->prepare("INSERT INTO export_documents (order_id, document_type, document_content) VALUES (?, ?, ?)");
                 $stmt->execute([$order_id, 'bill_of_lading', $tracking_number]);
+                if ($export_doc_path) {
+                    $stmt->execute([$order_id, 'export_doc', $export_doc_path]);
+                }
             }
             $pdo->commit();
-            echo "<div class='alert alert-success'>Order status updated!" . ($status == 'shipped' ? " Tracking Number: $tracking_number" : "") . "</div>";
+            echo "<div class='alert alert-success'>Order status updated to $status!" . ($status == 'shipped' ? " Tracking Number: $tracking_number" : "") . "</div>";
         } catch (PDOException $e) {
             $pdo->rollBack();
             echo "<div class='alert alert-danger'>Error: " . htmlspecialchars($e->getMessage()) . "</div>";
@@ -137,24 +133,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && $_SESSION['role'] == 'importer' && i
 // Fetch orders based on role
 $query = $_SESSION['role'] == 'farmer'
     ? "SELECT o.*, p.name, p.price, u.username as importer, o.delivery_address,
-              (SELECT document_content FROM export_documents WHERE order_id = o.id AND document_type = 'invoice') as invoice_path,
+              (SELECT document_content FROM export_documents WHERE order_id = o.id AND document_type = 'invoice') as invoice_content,
               (SELECT document_content FROM export_documents WHERE order_id = o.id AND document_type = 'bill_of_lading') as tracking_number,
-              (SELECT document_content FROM export_documents WHERE order_id = o.id AND document_type = 'receipt') as receipt_path
+              (SELECT document_content FROM export_documents WHERE order_id = o.id AND document_type = 'export_doc') as export_doc_path
        FROM orders o JOIN products p ON o.product_id = p.id 
        JOIN users u ON o.importer_id = u.id 
        WHERE p.farmer_id = ?"
     : ($_SESSION['role'] == 'admin'
         ? "SELECT o.*, p.name, p.price, u1.username as farmer, u2.username as importer, o.delivery_address,
-                  (SELECT document_content FROM export_documents WHERE order_id = o.id AND document_type = 'invoice') as invoice_path,
+                  (SELECT document_content FROM export_documents WHERE order_id = o.id AND document_type = 'invoice') as invoice_content,
                   (SELECT document_content FROM export_documents WHERE order_id = o.id AND document_type = 'bill_of_lading') as tracking_number,
-                  (SELECT document_content FROM export_documents WHERE order_id = o.id AND document_type = 'receipt') as receipt_path
+                  (SELECT document_content FROM export_documents WHERE order_id = o.id AND document_type = 'export_doc') as export_doc_path
            FROM orders o JOIN products p ON o.product_id = p.id 
            JOIN users u1 ON p.farmer_id = u1.id 
            JOIN users u2 ON o.importer_id = u2.id"
         : "SELECT o.*, p.name, p.price, u.username as farmer, o.delivery_address,
-                  (SELECT document_content FROM export_documents WHERE order_id = o.id AND document_type = 'invoice') as invoice_path,
+                  (SELECT document_content FROM export_documents WHERE order_id = o.id AND document_type = 'invoice') as invoice_content,
                   (SELECT document_content FROM export_documents WHERE order_id = o.id AND document_type = 'bill_of_lading') as tracking_number,
-                  (SELECT document_content FROM export_documents WHERE order_id = o.id AND document_type = 'receipt') as receipt_path
+                  (SELECT document_content FROM export_documents WHERE order_id = o.id AND document_type = 'export_doc') as export_doc_path
            FROM orders o JOIN products p ON o.product_id = p.id 
            JOIN users u ON p.farmer_id = u.id 
            WHERE o.importer_id = ?");
@@ -221,7 +217,7 @@ $orders = $stmt->fetchAll();
                     <th>Tracking Number</th>
                     <th>Delivery Address</th>
                     <th>Invoice</th>
-                    <th>Receipt</th>
+                    <th>Export Doc</th>
                     <?php if ($_SESSION['role'] == 'farmer' || $_SESSION['role'] == 'importer'): ?>
                         <th>Action</th>
                     <?php endif; ?>
@@ -244,17 +240,18 @@ $orders = $stmt->fetchAll();
                             <td><?php echo htmlspecialchars($order['updated_at'] ?? 'N/A'); ?></td>
                             <td><?php echo htmlspecialchars($order['tracking_number'] ?? 'N/A'); ?></td>
                             <td><?php echo htmlspecialchars($order['delivery_address'] ?? 'N/A'); ?></td>
-                            <td><a href="<?php echo htmlspecialchars($order['invoice_path']); ?>" target="_blank" class="btn btn-sm btn-secondary">View</a> <a href="<?php echo htmlspecialchars($order['invoice_path']); ?>" download class="btn btn-sm btn-secondary">Download</a></td>
-                            <td><a href="<?php echo htmlspecialchars($order['receipt_path']); ?>" target="_blank" class="btn btn-sm btn-secondary">View</a> <a href="<?php echo htmlspecialchars($order['receipt_path']); ?>" download class="btn btn-sm btn-secondary">Download</a></td>
+                            <td><a href="generatedocs.php?order_id=<?php echo $order['id']; ?>&action=view" target="_blank" class="btn btn-sm btn-secondary">View</a> | <a href="generatedocs.php?order_id=<?php echo $order['id']; ?>&action=download" target="_blank" class="btn btn-sm btn-secondary">Download</a></td>
+                            <td><a href="<?php echo htmlspecialchars($order['export_doc_path']); ?>" target="_blank" class="btn btn-sm btn-secondary">View</a></td>
                             <?php if ($_SESSION['role'] == 'farmer'): ?>
                                 <td>
-                                    <form method="POST" style="display:inline;">
+                                    <form method="POST" enctype="multipart/form-data" style="display:inline;">
                                         <input type="hidden" name="order_id" value="<?php echo $order['id']; ?>">
                                         <select name="status" class="form-select d-inline w-auto">
                                             <option value="pending" <?php echo $order['status'] == 'pending' ? 'selected' : ''; ?>>Pending</option>
                                             <option value="confirmed" <?php echo $order['status'] == 'confirmed' ? 'selected' : ''; ?>>Confirmed</option>
                                             <option value="shipped" <?php echo $order['status'] == 'shipped' ? 'selected' : ''; ?>>Shipped</option>
                                         </select>
+                                        <input type="file" class="form-control form-control-sm d-inline w-auto" id="export_doc" name="export_doc" accept="application/pdf">
                                         <button type="submit" name="update_status" class="btn btn-primary btn-sm">Update</button>
                                     </form>
                                 </td>

@@ -9,7 +9,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'importer') {
     exit;
 }
 
-// Fetch report data
+// Fetch summary statistics
 $stmt = $pdo->prepare("SELECT status, COUNT(*) as count FROM orders WHERE importer_id = ? GROUP BY status");
 $order_stats = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 $total_orders = array_sum($order_stats);
@@ -49,6 +49,7 @@ $user_count = $stmt->fetch()['count'];
             <p>Total Importers: <?php echo $user_count; ?></p>
         </div>
     </div>
+    <a href="viewProducts.php" class="btn btn-primary mb-3">View Products</a>
     <a href="orderManagement.php" class="btn btn-primary mb-3">Manage Orders</a>
 </div>
 <script>

@@ -9,7 +9,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'admin') {
     exit;
 }
 
-// Fetch report data
+// Fetch summary statistics
 $stmt = $pdo->query("SELECT status, COUNT(*) as count FROM orders GROUP BY status");
 $order_stats = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 $total_orders = array_sum($order_stats);
@@ -67,8 +67,6 @@ $user_count = $stmt->fetch()['count'];
         options: { scales: { y: { beginAtZero: true } } }
     });
 </script>
-<?php require_once 'footer.php'; ?>
-
 <!-- Responsive admin dashboard -->
 <div class="container mt-5">
     <h2>Admin Dashboard</h2>

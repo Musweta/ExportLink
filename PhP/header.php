@@ -4,7 +4,7 @@ session_start();
 // Include database connection file
 require_once 'db_conn.php';
 
-// Enable error reporting for debugging 
+// Enable error reporting for debugging
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
@@ -30,6 +30,8 @@ if (isset($_SESSION['user_id'])) {
             header("Location: login.php?error=awaiting_approval");
             exit;
         }
+        // Set role in session for consistency across pages
+        $_SESSION['role'] = $user['role'];
     } catch (PDOException $e) {
         error_log("Header user fetch error: " . $e->getMessage());
         echo "<div class='alert alert-danger'>Database error. Please try again later.</div>";
@@ -65,12 +67,19 @@ if (isset($_SESSION['user_id'])) {
         <div class="collapse navbar-collapse" id="navbarNav">
             <div class="navbar-nav ms-auto">
                 <?php if (isset($_SESSION['user_id'])): ?>
-                    <a class="nav-link" href="<?php echo match ($user['role']) {
-                        'admin' => 'adminDashboard.php',
-                        'farmer' => 'farmerDashboard.php',
-                        'importer' => 'importerDashboard.php',
-                        default => 'index.php',
-                    }; ?>">Dashboard</a>
+                    <a class="nav-link" href="<?php
+                        // Determine dashboard based on user role with debug logging
+                        $dashboard_url = '';
+                        if ($user['role'] == 'admin') {
+                            $dashboard_url = 'adminDashboard.php';
+                        } elseif ($user['role'] == 'importer') {
+                            $dashboard_url = 'importerDashboard.php';
+                        } else {
+                            $dashboard_url = 'farmerDashboard.php';
+                        }
+                        error_log("Header dashboard URL: $dashboard_url for role: {$user['role']}");
+                        echo $dashboard_url;
+                    ?>">Dashboard</a>
                     <?php if (in_array($user['role'], ['farmer', 'importer'])): ?>
                         <a class="nav-link" href="profile.php">Profile</a>
                     <?php endif; ?>

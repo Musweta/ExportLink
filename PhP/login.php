@@ -29,6 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login'])) {
             $user = $stmt->fetch();
             if ($user && password_verify($password, $user['password']) && ($user['role'] != 'admin' || $user['is_approved'])) {
                 $_SESSION['user_id'] = $user['id'];
+                $_SESSION['role'] = $user['role']; // Set role in session
                 header("Location: index.php");
                 exit;
             } else {

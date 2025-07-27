@@ -43,7 +43,7 @@ $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
     </div>
     <?php if (isset($_GET['product_id'])): ?>
         <?php
-        $stmt = $pdo->prepare("SELECT id, name, type, description, price, quantity, origin, grade, image_path FROM products WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT id, name, type, description, price, quantity, origin, grade, image_path, hs_code FROM products WHERE id = ?");
         $stmt->execute([$_GET['product_id']]);
         $product = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($product): ?>
@@ -62,6 +62,7 @@ $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <p><strong>Quantity Available:</strong> <?php echo htmlspecialchars($product['quantity']); ?></p>
                             <p><strong>Origin:</strong> <?php echo htmlspecialchars($product['origin']); ?></p>
                             <p><strong>Grade:</strong> <?php echo htmlspecialchars($product['grade']); ?></p>
+                            <p><strong>HS Code:</strong> <?php echo htmlspecialchars($product['hs_code']); ?></p>
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" onclick="window.history.back();">Close</button>
