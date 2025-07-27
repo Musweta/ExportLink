@@ -54,17 +54,8 @@ $all_orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <body>
 <div class="container mt-5">
     <h2>Admin Dashboard</h2>
-    <div class="card mb-3">
-        <div class="card-body">
-            <h5 class="card-title">Order Statistics</h5>
-            <canvas id="orderChart"></canvas>
-            <p>Total Orders: <?php echo $total_orders; ?></p>
-            <p>Pending: <?php echo $pending; ?></p>
-            <p>Confirmed: <?php echo $confirmed; ?></p>
-            <p>Shipped: <?php echo $shipped; ?></p>
-            <p>Delivered: <?php echo $delivered; ?></p>
-        </div>
-    </div>
+    <a href="manageUsers.php" class="btn btn-primary mb-3">Manage Users</a>
+  
     <div class="card mb-3">
         <div class="card-body">
             <h5 class="card-title">System Report</h5>
@@ -93,7 +84,6 @@ $all_orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <th>Updated At</th>
                     <th>Delivery Address</th>
                     <th>Invoice</th>
-                    <th>Export Doc</th>
                 </tr>
             </thead>
             <tbody>
@@ -113,15 +103,24 @@ $all_orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <td><?php echo htmlspecialchars($order['status']); ?></td>
                             <td><?php echo htmlspecialchars($order['updated_at'] ?? 'N/A'); ?></td>
                             <td><?php echo htmlspecialchars($order['delivery_address'] ?? 'N/A'); ?></td>
-                            <td><a href="generatedocs.php?order_id=<?php echo $order['id']; ?>&action=view" target="_blank" class="btn btn-sm btn-secondary">View</a></td>
-                            <td><a href="<?php echo htmlspecialchars($order['export_doc_path']); ?>" target="_blank" class="btn btn-sm btn-secondary">View</a></td>
+                            <td><a href="generatedocs.php?order_id=<?php echo $order['id']; ?>&action=view" target="_blank" class="btn btn-sm btn-secondary">View Invoice</a></td>
                         </tr>
                     <?php endforeach; ?>
                 <?php endif; ?>
             </tbody>
         </table>
     </div>
-    <a href="manageUsers.php" class="btn btn-primary mb-3">Manage Users</a>
+  <div class="card mb-3">
+        <div class="card-body">
+            <h5 class="card-title">Order Statistics</h5>
+            <canvas id="orderChart"></canvas>
+            <p>Total Orders: <?php echo $total_orders; ?></p>
+            <p>Pending: <?php echo $pending; ?></p>
+            <p>Confirmed: <?php echo $confirmed; ?></p>
+            <p>Shipped: <?php echo $shipped; ?></p>
+            <p>Delivered: <?php echo $delivered; ?></p>
+        </div>
+    </div>
 </div>
 <script>
     const ctxOrder = document.getElementById('orderChart').getContext('2d');

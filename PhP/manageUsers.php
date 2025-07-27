@@ -69,7 +69,7 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <form method="POST" style="display:inline;">
                                     <input type="hidden" name="user_id" value="<?php echo $user['id']; ?>">
                                     <?php if ($user['is_approved']): ?>
-                                        <button type="submit" name="action" value="revoke" class="btn btn-warning btn-sm">Revoke</button>
+                                        <button type="submit" name="action" value="revoke" class="btn btn-warning btn-sm">Archive</button>
                                     <?php else: ?>
                                         <button type="submit" name="action" value="approve" class="btn btn-success btn-sm">Approve</button>
                                     <?php endif; ?>
