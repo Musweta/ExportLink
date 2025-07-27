@@ -41,7 +41,7 @@ $delivered = $order_stats['delivered'] ?? 0;
 <div class="container mt-5">
     <a href="productListing.php" class="btn btn-primary mb-3">List Products</a>
     <a href="orderManagement.php" class="btn btn-primary mb-3">Manage Orders</a>
-    <a href="viewProducts.php" class="btn btn-primary mb-3">View Products</a>
+    <a href="farmerProducts.php" class="btn btn-primary mb-3">View Products</a>
     <div class="row row-cols-1 row-cols-md-3 g-4">
         <?php foreach ($products as $product): ?>
             <div class="col">
@@ -56,7 +56,7 @@ $delivered = $order_stats['delivered'] ?? 0;
             </div>
         <?php endforeach; ?>
     </div>
-        <h3>Dashboard</h3>
+    <!-- <h3>Dashboard</h3> 
     <div class="card mb-3">
         <div class="card-body">
             <canvas id="orderChart"></canvas>
@@ -66,8 +66,7 @@ $delivered = $order_stats['delivered'] ?? 0;
             <p>Shipped: <?php echo $shipped; ?></p>
             <p>Delivered: <?php echo $delivered; ?></p>
         </div>
-    </div>
-
+    </div> -->
 </div>
 
 <?php require_once 'footer.php'; ?>

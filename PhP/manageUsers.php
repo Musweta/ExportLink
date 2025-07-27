@@ -88,7 +88,7 @@ foreach ($users as $user) {
                                 <?php if ($user['role'] != 'admin'): ?>
                                     <form method="POST" style="display:inline;">
                                         <input type="hidden" name="delete_id" value="<?php echo $user['id']; ?>">
-                                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this user?');">Delete</button>
+                                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this user?');">Archive</button>
                                     </form>
                                 <?php endif; ?>
                             </td>

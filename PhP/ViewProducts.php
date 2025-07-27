@@ -3,7 +3,7 @@
 require_once 'header.php';
 require_once 'db_conn.php';
 
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['importer', 'admin'])) {
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['importer', 'admin', ])) {
     // Redirect unauthorized users to login
     header("Location: login.php");
     exit;

@@ -20,13 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && $_SESSION['role'] == 'importer' && i
     $currency = filter_input(INPUT_POST, 'currency', FILTER_UNSAFE_RAW);
     $delivery_address = filter_input(INPUT_POST, 'delivery_address', FILTER_UNSAFE_RAW);
 
-    // Check importer details (simulated license validation)
-    $stmt = $pdo->prepare("SELECT certification_path FROM users WHERE id = ?");
-    $stmt->execute([$_SESSION['user_id']]);
-    $importer = $stmt->fetch();
-    if (!$importer || !$importer['certification_path']) {
-        echo "<div class='alert alert-danger'>Importer license not verified. Please upload certification.</div>";
-    } elseif (empty($product_id) || empty($quantity) || $quantity <= 0 || empty($payment_terms) || !in_array($currency, ['USD', 'KES', 'EUR']) || empty($delivery_address)) {
+    if (empty($product_id) || empty($quantity) || $quantity <= 0 || empty($payment_terms) || !in_array($currency, ['USD', 'KES', 'EUR']) || empty($delivery_address)) {
         echo "<div class='alert alert-danger'>Invalid order details.</div>";
     } else {
         $stmt = $pdo->prepare("SELECT quantity, price, farmer_id, name, type, hs_code, origin, grade FROM products WHERE id = ?");
@@ -184,8 +178,8 @@ $orders = $stmt->fetchAll();
                 <label for="currency" class="form-label">Currency</label>
                 <select class="form-select" id="currency" name="currency" required>
                     <option value="USD">USD ($1 = KES 130, €0.185)</option>
-                    <option value="KES">KES ($1 = KES 130)</option>
-                    <option value="EUR">EUR ($1 = €0.185, €1 = KES 152)</option>
+                    <option value="KES">KES (KES 130 = $ 1,€0.085 )</option>
+                    <option value="EUR">EUR ($1 = €0.185, KES 152)</option>
                 </select>
             </div>
             <div class="mb-3">
@@ -211,9 +205,8 @@ $orders = $stmt->fetchAll();
                     <th>Updated At</th>
                     <th>Delivery Address</th>
                     <th>Invoice</th>
-                    <th>Export Doc</th>
+                    <th>Action</th>
                     <?php if ($_SESSION['role'] == 'farmer' || $_SESSION['role'] == 'importer'): ?>
-                        <th>Action</th>
                     <?php endif; ?>
                 </tr>
             </thead>
@@ -234,7 +227,7 @@ $orders = $stmt->fetchAll();
                             <td><?php echo htmlspecialchars($order['updated_at'] ?? 'N/A'); ?></td>
                             <td><?php echo htmlspecialchars($order['delivery_address'] ?? 'N/A'); ?></td>
                             <td><a href="generatedocs.php?order_id=<?php echo $order['id']; ?>&action=view" target="_blank" class="btn btn-sm btn-secondary">View</a> | <a href="generatedocs.php?order_id=<?php echo $order['id']; ?>&action=download" target="_blank" class="btn btn-sm btn-secondary">Download</a></td>
-                            <td><a href="<?php echo htmlspecialchars($order['export_doc_path']); ?>" target="_blank" class="btn btn-sm btn-secondary">View</a></td>
+                    
                             <?php if ($_SESSION['role'] == 'farmer'): ?>
                                 <td>
                                     <form method="POST" enctype="multipart/form-data" style="display:inline;">

@@ -37,8 +37,11 @@ $user_count = $stmt->fetch()['count'];
 <body>
 <div class="container mt-5">
     <h2>Importer Dashboard</h2>
+    <a href="viewProducts.php" class="btn btn-primary mb-3">View Products</a>
+    <a href="orderManagement.php" class="btn btn-primary mb-3">Manage Orders</a>
+
     <div class="card mb-3">
-        <div class="card-body">
+       <!--  <div class="card-body">
             <h5 class="card-title">Order Statistics</h5>
             <canvas id="orderChart"></canvas>
             <p>Total Orders: <?php echo $total_orders; ?></p>
@@ -47,10 +50,9 @@ $user_count = $stmt->fetch()['count'];
             <p>Shipped: <?php echo $shipped; ?></p>
             <p>Delivered: <?php echo $delivered; ?></p>
             <p>Total Importers: <?php echo $user_count; ?></p>
-        </div>
+        </div>  -->
     </div>
-    <a href="viewProducts.php" class="btn btn-primary mb-3">View Products</a>
-    <a href="orderManagement.php" class="btn btn-primary mb-3">Manage Orders</a>
+
 </div>
 <script>
     const ctx = document.getElementById('orderChart').getContext('2d');
