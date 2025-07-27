@@ -28,7 +28,7 @@ $delivered = $order_stats['delivered'] ?? 0;
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ExportLink - Farmer Dashboard</title>
+    <title>ExportLink - Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background-color: #f0f8ff; }
@@ -41,7 +41,7 @@ $delivered = $order_stats['delivered'] ?? 0;
 <div class="container mt-5">
     <a href="productListing.php" class="btn btn-primary mb-3">List Products</a>
     <a href="orderManagement.php" class="btn btn-primary mb-3">Manage Orders</a>
-    <h2>View Products</h2>
+    <a href="viewProducts.php" class="btn btn-primary mb-3">View Products</a>
     <div class="row row-cols-1 row-cols-md-3 g-4">
         <?php foreach ($products as $product): ?>
             <div class="col">
@@ -59,7 +59,7 @@ $delivered = $order_stats['delivered'] ?? 0;
         <h3>Dashboard</h3>
     <div class="card mb-3">
         <div class="card-body">
-                      <canvas id="orderChart"></canvas>
+            <canvas id="orderChart"></canvas>
             <p>Total Orders: <?php echo $total_orders; ?></p>
             <p>Pending: <?php echo $pending; ?></p>
             <p>Confirmed: <?php echo $confirmed; ?></p>
