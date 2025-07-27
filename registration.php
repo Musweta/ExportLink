@@ -10,64 +10,68 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $email = filter_input(INPUT_POST, 'email', FILTER_SANITIZE_EMAIL);
     $raw_password = $_POST['password'] ?? '';
     $confirm_password = $_POST['confirm_password'] ?? '';
+
+// Validate that passwords match before hashing
+if ($raw_password !== $confirm_password) {
+    echo "<div class='alert alert-danger'>Passwords do not match.</div>";
+} else {
+    $password = password_hash($raw_password, PASSWORD_BCRYPT);
+
+    // Continue your validation and DB insert here...
+    if (empty($username) || empty($email) || empty($raw_password) || !in_array($role, ['farmer', 'importer', 'admin'])) {
+        echo "<div class='alert alert-danger'>Invalid input data.</div>";
+    }
+}
+
     $role = filter_input(INPUT_POST, 'role', FILTER_UNSAFE_RAW);
     $role = trim(htmlspecialchars($role ?? ''));
 
     // Validate inputs
-    if (empty($username) || empty($email) || empty($raw_password) || !in_array($role, ['farmer', 'importer', 'admin'])) {
-        echo "<div class='alert alert-danger'>Invalid input data. Please check all fields.</div>";
-    } elseif ($raw_password !== $confirm_password) {
-        echo "<div class='alert alert-danger'>Passwords do not match.</div>";
-    } elseif ($role === 'importer' && !isset($_FILES['documents'])) {
+    if (empty($username) || empty($email) || empty($password) || !in_array($role, ['farmer', 'importer', 'admin'])) {
+        echo "<div class='alert alert-danger'>Invalid input data.</div>";
+    } elseif ($role == 'importer' && !isset($_FILES['documents'])) {
         echo "<div class='alert alert-danger'>Please upload all required documents.</div>";
     } else {
         try {
-            // Hash password
-            $password = password_hash($raw_password, PASSWORD_BCRYPT);
-
             // Start transaction for user and document insertion
             $pdo->beginTransaction();
 
             // Exempt admins from approval
-            $is_approved = $role === 'admin' ? 1 : 0;
+            $is_approved = $role == 'admin' ? 1 : 0;
             $stmt = $pdo->prepare("INSERT INTO users (username, email, password, role, is_approved) VALUES (?, ?, ?, ?, ?)");
             $stmt->execute([$username, $email, $password, $role, $is_approved]);
             $user_id = $pdo->lastInsertId();
 
             // Handle importer document uploads
-            if ($role === 'importer') {
+            if ($role == 'importer') {
                 $required_docs = [
                     'import_license' => 'Import/Export License',
                     'business_registration' => 'Business Registration Certificate',
                     'tax_id' => 'Tax Identification Certificate',
                     'customs_registration' => 'Customs Registration Number',
                     'import_declaration' => 'Import Declaration Form',
-                    'bill_of_lading' => 'Bill of Lading/Airway Bill'
-                ];
-                $optional_docs = [
+                    'bill_of_lading' => 'Bill of Lading/Airway Bill',
                     'past_import_records' => 'Past Import Records',
                     'business_premises' => 'Proof of Physical Business Premises'
                 ];
-                $all_docs = array_merge($required_docs, $optional_docs);
                 $upload_dir = '../Uploads/';
-                foreach ($all_docs as $doc_key => $doc_name) {
-                    if (isset($_FILES['documents']['name'][$doc_key]) && $_FILES['documents']['error'][$doc_key] == UPLOAD_ERR_OK) {
-                        $file_name = $user_id . '_' . $doc_key . '_' . time() . '_' . basename($_FILES['documents']['name'][$doc_key]);
-                        $file_path = $upload_dir . $file_name;
-                        if (!move_uploaded_file($_FILES['documents']['tmp_name'][$doc_key], $file_path)) {
-                            throw new Exception("Failed to upload $doc_name.");
-                        }
-                        $stmt = $pdo->prepare("INSERT INTO importer_documents (user_id, document_type, file_path) VALUES (?, ?, ?)");
-                        $stmt->execute([$user_id, $doc_key, $file_path]);
-                    } elseif (array_key_exists($doc_key, $required_docs)) {
+                foreach ($required_docs as $doc_key => $doc_name) {
+                    if (!isset($_FILES['documents']['name'][$doc_key]) || $_FILES['documents']['error'][$doc_key] != UPLOAD_ERR_OK) {
                         throw new Exception("Missing or invalid $doc_name.");
                     }
+                    $file_name = $user_id . '_' . $doc_key . '_' . time() . '_' . basename($_FILES['documents']['name'][$doc_key]);
+                    $file_path = $upload_dir . $file_name;
+                    if (!move_uploaded_file($_FILES['documents']['tmp_name'][$doc_key], $file_path)) {
+                        throw new Exception("Failed to upload $doc_name.");
+                    }
+                    $stmt = $pdo->prepare("INSERT INTO importer_documents (user_id, document_type, file_path) VALUES (?, ?, ?)");
+                    $stmt->execute([$user_id, $doc_key, $file_path]);
                 }
             }
 
             $pdo->commit();
-            $message = $role === 'admin'
-                ? "Registration successful! Please <a href='login.php'>login</a>."
+            $message = $role == 'admin' 
+                ? "Registration successful! Please <a href='login.php'>login</a>." 
                 : "Registration successful! Awaiting admin approval.";
             echo "<div class='alert alert-success'>$message</div>";
         } catch (Exception $e) {
@@ -94,10 +98,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <div class="mb-3">
             <label for="password" class="form-label">Password</label>
             <input type="password" class="form-control" id="password" name="password" required placeholder="Enter password">
-        </div>
+         </div>
         <div class="mb-3">
-            <label for="confirm_password" class="form-label">Confirm Password</label>
-            <input type="password" class="form-control" id="confirm_password" name="confirm_password" required placeholder="Re-enter password">
+    <label for="confirm_password" class="form-label">Confirm Password</label>
+    <input type="password" class="form-control" id="confirm_password" name="confirm_password" required placeholder="Re-enter password">
+</div>
+
         </div>
         <div class="mb-3">
             <label for="role" class="form-label">Role</label>
@@ -113,36 +119,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <h4>Importer Documents</h4>
             <div class="mb-3">
                 <label for="import_license" class="form-label">Import/Export License</label>
-                <input type="file" class="form-control" id="import_license" name="documents[import_license]" accept=".pdf,.jpg,.png" required>
+                <input type="file" class="form-control" id="import_license" name="documents[import_license]" accept=".pdf,.jpg,.png">
             </div>
             <div class="mb-3">
                 <label for="business_registration" class="form-label">Business Registration Certificate</label>
-                <input type="file" class="form-control" id="business_registration" name="documents[business_registration]" accept=".pdf,.jpg,.png" required>
+                <input type="file" class="form-control" id="business_registration" name="documents[business_registration]" accept=".pdf,.jpg,.png">
             </div>
             <div class="mb-3">
                 <label for="tax_id" class="form-label">Tax Identification Certificate (TIN/VAT)</label>
-                <input type="file" class="form-control" id="tax_id" name="documents[tax_id]" accept=".pdf,.jpg,.png" required>
+                <input type="file" class="form-control" id="tax_id" name="documents[tax_id]" accept=".pdf,.jpg,.png">
             </div>
             <div class="mb-3">
                 <label for="customs_registration" class="form-label">Customs Registration Number or EORI</label>
-                <input type="file" class="form-control" id="customs_registration" name="documents[customs_registration]" accept=".pdf,.jpg,.png" required>
+                <input type="file" class="form-control" id="customs_registration" name="documents[customs_registration]" accept=".pdf,.jpg,.png">
             </div>
             <div class="mb-3">
                 <label for="import_declaration" class="form-label">Import Declaration Form (IDF)</label>
-                <input type="file" class="form-control" id="import_declaration" name="documents[import_declaration]" accept=".pdf,.jpg,.png" required>
+                <input type="file" class="form-control" id="import_declaration" name="documents[import_declaration]" accept=".pdf,.jpg,.png">
             </div>
             <div class="mb-3">
                 <label for="bill_of_lading" class="form-label">Bill of Lading or Airway Bill</label>
-                <input type="file" class="form-control" id="bill_of_lading" name="documents[bill_of_lading]" accept=".pdf,.jpg,.png" required>
+                <input type="file" class="form-control" id="bill_of_lading" name="documents[bill_of_lading]" accept=".pdf,.jpg,.png">
             </div>
-            <div class="mb-3">
-                <label for="past_import_records" class="form-label">Past Import Records (Optional)</label>
-                <input type="file" class="form-control" id="past_import_records" name="documents[past_import_records]" accept=".pdf,.jpg,.png">
-            </div>
-            <div class="mb-3">
-                <label for="business_premises" class="form-label">Proof of Physical Business Premises (Optional)</label>
-                <input type="file" class="form-control" id="business_premises" name="documents[business_premises]" accept=".pdf,.jpg,.png">
-            </div>
+           
         </div>
         <button type="submit" class="btn btn-primary">Register</button>
     </form>
@@ -153,11 +152,9 @@ function toggleImporterDocs() {
     const role = document.getElementById('role').value;
     const importerDocs = document.getElementById('importer-docs');
     importerDocs.style.display = role === 'importer' ? 'block' : 'none';
-    // Make only required importer document fields mandatory
+    // Make importer document fields required only when role is importer
     const inputs = importerDocs.querySelectorAll('input[type="file"]');
-    inputs.forEach(input => {
-        input.required = role === 'importer' && !['past_import_records', 'business_premises'].includes(input.id);
-    });
+    inputs.forEach(input => input.required = role === 'importer');
 }
 </script>
 

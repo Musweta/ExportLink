@@ -44,17 +44,8 @@ $total_products = $stmt->fetch()['count'];
 <body>
 <div class="container mt-5">
     <h2>Admin Dashboard</h2>
-    <div class="card mb-3">
-        <div class="card-body">
-            <h5 class="card-title">Order Statistics</h5>
-            <canvas id="orderChart"></canvas>
-            <p>Total Orders: <?php echo $total_orders; ?></p>
-            <p>Pending: <?php echo $pending; ?></p>
-            <p>Confirmed: <?php echo $confirmed; ?></p>
-            <p>Shipped: <?php echo $shipped; ?></p>
-            <p>Delivered: <?php echo $delivered; ?></p>
-        </div>
-    </div>
+    <a href="orderManagement.php" class="btn btn-primary mb-3">View All Orders</a>
+    <a href="manageUsers.php" class="btn btn-primary mb-3">Manage Users</a>
     <div class="card mb-3">
         <div class="card-body">
             <h5 class="card-title">System Report</h5>
@@ -66,8 +57,18 @@ $total_products = $stmt->fetch()['count'];
             <canvas id="systemChart" style="max-height: 200px;"></canvas>
         </div>
     </div>
-    <a href="orderManagement.php" class="btn btn-primary mb-3">View All Orders</a>
-    <a href="manageUsers.php" class="btn btn-primary mb-3">Manage Users</a>
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5 class="card-title">Order Statistics</h5>
+            <canvas id="orderChart"></canvas>
+            <p>Total Orders: <?php echo $total_orders; ?></p>
+            <p>Pending: <?php echo $pending; ?></p>
+            <p>Confirmed: <?php echo $confirmed; ?></p>
+            <p>Shipped: <?php echo $shipped; ?></p>
+            <p>Delivered: <?php echo $delivered; ?></p>
+        </div>
+    </div>
+    
 </div>
 <script>
     const ctxOrder = document.getElementById('orderChart').getContext('2d');

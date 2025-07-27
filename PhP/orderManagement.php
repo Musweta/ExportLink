@@ -2,7 +2,7 @@
 // Include header with session and database setup
 require_once 'header.php';
 require_once 'db_conn.php';
-require_once '../dompdf/autoload.inc.php'; // Dompdf for document generation
+require_once '../dompdf/autoload.inc.php'; // Assuming Dompdf is installed via Composer
 use Dompdf\Dompdf;
 
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['farmer', 'importer', 'admin'])) {
@@ -98,20 +98,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && $_SESSION['role'] == 'farmer' && iss
     } else {
         try {
             $pdo->beginTransaction();
+            error_log("Executing update with status: $status, order_id: $order_id, farmer_id: {$_SESSION['user_id']}");
             $stmt = $pdo->prepare("UPDATE orders SET status = ? WHERE id = ? AND product_id IN (SELECT id FROM products WHERE farmer_id = ?)");
             $stmt->execute([$status, $order_id, $_SESSION['user_id']]);
-            if ($status == 'shipped' && $stmt->rowCount() > 0) {
-                $tracking_number = 'TRK-' . strtoupper(substr(md5($order_id . time()), 0, 10));
+            if ($status == 'shipped' && $stmt->rowCount() > 0 && $export_doc_path) {
                 $stmt = $pdo->prepare("INSERT INTO export_documents (order_id, document_type, document_content) VALUES (?, ?, ?)");
-                $stmt->execute([$order_id, 'bill_of_lading', $tracking_number]);
-                if ($export_doc_path) {
-                    $stmt->execute([$order_id, 'export_doc', $export_doc_path]);
-                }
+                $stmt->execute([$order_id, 'export_doc', $export_doc_path]);
             }
             $pdo->commit();
-            echo "<div class='alert alert-success'>Order status updated to $status!" . ($status == 'shipped' ? " Tracking Number: $tracking_number" : "") . "</div>";
+            echo "<div class='alert alert-success'>Order status updated to $status!</div>";
         } catch (PDOException $e) {
             $pdo->rollBack();
+            error_log("PDO Error: " . $e->getMessage() . " at line " . $e->getLine());
             echo "<div class='alert alert-danger'>Error: " . htmlspecialchars($e->getMessage()) . "</div>";
         }
     }
@@ -134,7 +132,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && $_SESSION['role'] == 'importer' && i
 $query = $_SESSION['role'] == 'farmer'
     ? "SELECT o.*, p.name, p.price, u.username as importer, o.delivery_address,
               (SELECT document_content FROM export_documents WHERE order_id = o.id AND document_type = 'invoice') as invoice_content,
-              (SELECT document_content FROM export_documents WHERE order_id = o.id AND document_type = 'bill_of_lading') as tracking_number,
               (SELECT document_content FROM export_documents WHERE order_id = o.id AND document_type = 'export_doc') as export_doc_path
        FROM orders o JOIN products p ON o.product_id = p.id 
        JOIN users u ON o.importer_id = u.id 
@@ -142,14 +139,12 @@ $query = $_SESSION['role'] == 'farmer'
     : ($_SESSION['role'] == 'admin'
         ? "SELECT o.*, p.name, p.price, u1.username as farmer, u2.username as importer, o.delivery_address,
                   (SELECT document_content FROM export_documents WHERE order_id = o.id AND document_type = 'invoice') as invoice_content,
-                  (SELECT document_content FROM export_documents WHERE order_id = o.id AND document_type = 'bill_of_lading') as tracking_number,
                   (SELECT document_content FROM export_documents WHERE order_id = o.id AND document_type = 'export_doc') as export_doc_path
            FROM orders o JOIN products p ON o.product_id = p.id 
            JOIN users u1 ON p.farmer_id = u1.id 
            JOIN users u2 ON o.importer_id = u2.id"
         : "SELECT o.*, p.name, p.price, u.username as farmer, o.delivery_address,
                   (SELECT document_content FROM export_documents WHERE order_id = o.id AND document_type = 'invoice') as invoice_content,
-                  (SELECT document_content FROM export_documents WHERE order_id = o.id AND document_type = 'bill_of_lading') as tracking_number,
                   (SELECT document_content FROM export_documents WHERE order_id = o.id AND document_type = 'export_doc') as export_doc_path
            FROM orders o JOIN products p ON o.product_id = p.id 
            JOIN users u ON p.farmer_id = u.id 
@@ -214,7 +209,6 @@ $orders = $stmt->fetchAll();
                     <th>Total Amount</th>
                     <th>Status</th>
                     <th>Updated At</th>
-                    <th>Tracking Number</th>
                     <th>Delivery Address</th>
                     <th>Invoice</th>
                     <th>Export Doc</th>
@@ -225,7 +219,7 @@ $orders = $stmt->fetchAll();
             </thead>
             <tbody>
                 <?php if (empty($orders)): ?>
-                    <tr><td colspan="14">No orders found.</td></tr>
+                    <tr><td colspan="13">No orders found.</td></tr>
                 <?php else: ?>
                     <?php foreach ($orders as $order): ?>
                         <tr>
@@ -238,7 +232,6 @@ $orders = $stmt->fetchAll();
                             <td><?php echo htmlspecialchars($order['quantity'] * $order['price']) . " " . htmlspecialchars($order['currency']); ?></td>
                             <td><?php echo htmlspecialchars($order['status']); ?></td>
                             <td><?php echo htmlspecialchars($order['updated_at'] ?? 'N/A'); ?></td>
-                            <td><?php echo htmlspecialchars($order['tracking_number'] ?? 'N/A'); ?></td>
                             <td><?php echo htmlspecialchars($order['delivery_address'] ?? 'N/A'); ?></td>
                             <td><a href="generatedocs.php?order_id=<?php echo $order['id']; ?>&action=view" target="_blank" class="btn btn-sm btn-secondary">View</a> | <a href="generatedocs.php?order_id=<?php echo $order['id']; ?>&action=download" target="_blank" class="btn btn-sm btn-secondary">Download</a></td>
                             <td><a href="<?php echo htmlspecialchars($order['export_doc_path']); ?>" target="_blank" class="btn btn-sm btn-secondary">View</a></td>
