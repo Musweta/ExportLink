@@ -39,21 +39,9 @@ $delivered = $order_stats['delivered'] ?? 0;
 </head>
 <body>
 <div class="container mt-5">
-    <h2>Farmer Dashboard</h2>
-    <div class="card mb-3">
-        <div class="card-body">
-            <h5 class="card-title">Order Statistics</h5>
-            <canvas id="orderChart"></canvas>
-            <p>Total Orders: <?php echo $total_orders; ?></p>
-            <p>Pending: <?php echo $pending; ?></p>
-            <p>Confirmed: <?php echo $confirmed; ?></p>
-            <p>Shipped: <?php echo $shipped; ?></p>
-            <p>Delivered: <?php echo $delivered; ?></p>
-        </div>
-    </div>
     <a href="productListing.php" class="btn btn-primary mb-3">List Products</a>
     <a href="orderManagement.php" class="btn btn-primary mb-3">Manage Orders</a>
-    <h3>View Products</h3>
+    <h2>View Products</h2>
     <div class="row row-cols-1 row-cols-md-3 g-4">
         <?php foreach ($products as $product): ?>
             <div class="col">
@@ -68,20 +56,18 @@ $delivered = $order_stats['delivered'] ?? 0;
             </div>
         <?php endforeach; ?>
     </div>
+        <h3>Dashboard</h3>
+    <div class="card mb-3">
+        <div class="card-body">
+                      <canvas id="orderChart"></canvas>
+            <p>Total Orders: <?php echo $total_orders; ?></p>
+            <p>Pending: <?php echo $pending; ?></p>
+            <p>Confirmed: <?php echo $confirmed; ?></p>
+            <p>Shipped: <?php echo $shipped; ?></p>
+            <p>Delivered: <?php echo $delivered; ?></p>
+        </div>
+    </div>
+
 </div>
-<script>
-    const ctx = document.getElementById('orderChart').getContext('2d');
-    new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: ['Pending', 'Confirmed', 'Shipped', 'Delivered'],
-            datasets: [{
-                label: 'Order Status',
-                data: [<?php echo $pending; ?>, <?php echo $confirmed; ?>, <?php echo $shipped; ?>, <?php echo $delivered; ?>],
-                backgroundColor: ['#ff6384', '#36a2eb', '#ffcd56', '#4bc0c0']
-            }]
-        },
-        options: { scales: { y: { beginAtZero: true } } }
-    });
-</script>
+
 <?php require_once 'footer.php'; ?>

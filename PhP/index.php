@@ -62,7 +62,7 @@ if (isset($_SESSION['user_id'])) {
                 echo $dashboard_url;
             ?>" class="btn btn-primary">Go to Dashboard</a>
             <?php if (in_array($user['role'], ['farmer', 'importer'])): ?>
-                <a href="profile.php" class="btn btn-secondary">Profile</a>
+            
             <?php endif; ?>
         <?php endif; ?>
     </div>

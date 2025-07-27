@@ -2,7 +2,7 @@
 // Include header with session and database setup
 require_once 'header.php';
 require_once 'db_conn.php';
-require_once '../dompdf/autoload.inc.php'; // Assuming Dompdf is installed via Composer
+require_once '../dompdf/autoload.inc.php'; // Dompdf for document generation
 use Dompdf\Dompdf;
 
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['farmer', 'importer', 'admin'])) {
