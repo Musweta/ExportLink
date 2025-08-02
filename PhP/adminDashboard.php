@@ -125,7 +125,7 @@ $all_orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <script>
     const ctxOrder = document.getElementById('orderChart').getContext('2d');
     new Chart(ctxOrder, {
-        type: 'bar',
+        type: 'line',
         data: {
             labels: ['Pending', 'Confirmed', 'Shipped', 'Delivered'],
             datasets: [{
