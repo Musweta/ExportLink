@@ -34,9 +34,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && $_SESSION['role'] == 'importer' && i
                 $order_id = $pdo->lastInsertId();
                 $stmt = $pdo->prepare("UPDATE products SET quantity = quantity - ? WHERE id = ?");
                 $stmt->execute([$quantity, $product_id]);
-                $stmt = $pdo->prepare("SELECT u.username as farmer, u.email as importer_email, p.* FROM products p JOIN users u ON p.farmer_id = u.id WHERE p.id = ?");
-                $stmt->execute([$product_id]);
-                $product = $stmt->fetch();
+                
+                // Fetch farmer details
+                $stmt = $pdo->prepare("SELECT username as farmer FROM users WHERE id = ?");
+                $stmt->execute([$product['farmer_id']]);
+                $farmer = $stmt->fetch();
+                
+                // Fetch importer details
+                $stmt = $pdo->prepare("SELECT username, email FROM users WHERE id = ?");
+                $stmt->execute([$_SESSION['user_id']]);
+                $user = $stmt->fetch();
+                
                 $conversion_rates = ['USD' => 1, 'KES' => 130, 'EUR' => 0.185];
                 $base_price = $product['price'];
                 $converted_price = $base_price * $conversion_rates[$currency];
@@ -46,18 +54,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && $_SESSION['role'] == 'importer' && i
                 $invoice_content = "<h2>Commercial Invoice</h2>
                     Invoice Number: INV-$order_id<br>
                     Date: " . date('Y-m-d H:i:s') . "<br>
-                    Seller: {$product['farmer']}<br>
-                    Importer: {$user['username']} ({$user['email']})<br>
-                    Product: {$product['name']}<br>
-                    Type: {$product['type']}<br>
+                    Seller: " . htmlspecialchars($farmer['farmer'] ?? 'N/A') . "<br>
+                    Importer: " . htmlspecialchars($user['username'] ?? 'N/A') . " (" . htmlspecialchars($user['email'] ?? 'N/A') . ")<br>
+                    Product: " . htmlspecialchars($product['name'] ?? 'N/A') . "<br>
+                    Type: " . htmlspecialchars($product['type'] ?? 'N/A') . "<br>
                     Quantity: $quantity<br>
                     Unit Price: $converted_price $currency<br>
                     Total: $total $currency<br>
-                    Payment Terms: $payment_terms<br>
-                    HS Code: {$product['hs_code']}<br>
-                    Country of Origin: {$product['origin']}<br>
-                    Grade: {$product['grade']}<br>
-                    Delivery Address: $delivery_address";
+                    Payment Terms: " . htmlspecialchars($payment_terms ?? 'N/A') . "<br>
+                    HS Code: " . htmlspecialchars($product['hs_code'] ?? 'N/A') . "<br>
+                    Country of Origin: " . htmlspecialchars($product['origin'] ?? 'N/A') . "<br>
+                    Grade: " . htmlspecialchars($product['grade'] ?? 'N/A') . "<br>
+                    Delivery Address: " . htmlspecialchars($delivery_address ?? 'N/A');
 
                 // Store invoice content for later retrieval
                 $stmt = $pdo->prepare("INSERT INTO export_documents (order_id, document_type, document_content) VALUES (?, ?, ?)");
@@ -122,30 +130,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && $_SESSION['role'] == 'importer' && i
     }
 }
 
-// Fetch orders based on role
-$query = $_SESSION['role'] == 'farmer'
-    ? "SELECT o.*, p.name, p.price, u.username as importer, o.delivery_address,
-              (SELECT document_content FROM export_documents WHERE order_id = o.id AND document_type = 'invoice') as invoice_content,
-              (SELECT document_content FROM export_documents WHERE order_id = o.id AND document_type = 'export_doc') as export_doc_path
-       FROM orders o JOIN products p ON o.product_id = p.id 
-       JOIN users u ON o.importer_id = u.id 
-       WHERE p.farmer_id = ?"
-    : ($_SESSION['role'] == 'admin'
-        ? "SELECT o.*, p.name, p.price, u1.username as farmer, u2.username as importer, o.delivery_address,
-                  (SELECT document_content FROM export_documents WHERE order_id = o.id AND document_type = 'invoice') as invoice_content,
-                  (SELECT document_content FROM export_documents WHERE order_id = o.id AND document_type = 'export_doc') as export_doc_path
-           FROM orders o JOIN products p ON o.product_id = p.id 
-           JOIN users u1 ON p.farmer_id = u1.id 
-           JOIN users u2 ON o.importer_id = u2.id"
-        : "SELECT o.*, p.name, p.price, u.username as farmer, o.delivery_address,
-                  (SELECT document_content FROM export_documents WHERE order_id = o.id AND document_type = 'invoice') as invoice_content,
-                  (SELECT document_content FROM export_documents WHERE order_id = o.id AND document_type = 'export_doc') as export_doc_path
-           FROM orders o JOIN products p ON o.product_id = p.id 
-           JOIN users u ON p.farmer_id = u.id 
-           WHERE o.importer_id = ?");
+// Fetch orders based on role with consistent column names
+$query = "SELECT o.id, o.quantity, o.payment_terms, o.currency, o.delivery_address, o.status, o.updated_at,
+                 p.name, p.price, 
+                 u1.username as farmer_name, u2.username as importer_name,
+                 (SELECT document_content FROM export_documents WHERE order_id = o.id AND document_type = 'invoice') as invoice_content,
+                 (SELECT document_content FROM export_documents WHERE order_id = o.id AND document_type = 'export_doc') as export_doc_path
+          FROM orders o 
+          JOIN products p ON o.product_id = p.id 
+          JOIN users u1 ON p.farmer_id = u1.id 
+          JOIN users u2 ON o.importer_id = u2.id
+          WHERE " . ($_SESSION['role'] == 'farmer' ? "p.farmer_id = ?" : ($_SESSION['role'] == 'importer' ? "o.importer_id = ?" : "1=1"));
+
 $stmt = $pdo->prepare($query);
-$stmt->execute([$_SESSION['user_id']]);
-$orders = $stmt->fetchAll();
+$stmt->execute([$_SESSION['role'] != 'admin' ? $_SESSION['user_id'] : null]);
+$orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Debug: Log the first order to inspect its structure
+if (!empty($orders)) {
+    error_log("Order data: " . print_r($orders[0], true));
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -165,7 +169,7 @@ $orders = $stmt->fetchAll();
     <h2>Order Management</h2>
     <?php if ($_SESSION['role'] == 'importer' && isset($_GET['product_id'])): ?>
         <form method="POST" action="" class="col-md-6 mx-auto">
-            <input type="hidden" name="product_id" value="<?php echo htmlspecialchars($_GET['product_id']); ?>">
+            <input type="hidden" name="product_id" value="<?php echo htmlspecialchars($_GET['product_id'] ?? ''); ?>">
             <div class="mb-3">
                 <label for="quantity" class="form-label">Quantity</label>
                 <input type="number" class="form-control" id="quantity" name="quantity" required>
@@ -178,8 +182,8 @@ $orders = $stmt->fetchAll();
                 <label for="currency" class="form-label">Currency</label>
                 <select class="form-select" id="currency" name="currency" required>
                     <option value="USD">USD ($1 = KES 130, €0.185)</option>
-                    <option value="KES">KES (KES 130 = $ 1,€0.085 )</option>
-                    <option value="EUR">EUR ($1 = €0.185, KES 152)</option>
+                    <option value="KES">KES ($1 = KES 130)</option>
+                    <option value="EUR">EUR ($1 = €0.185, €1 = KES 152)</option>
                 </select>
             </div>
             <div class="mb-3">
@@ -205,8 +209,8 @@ $orders = $stmt->fetchAll();
                     <th>Updated At</th>
                     <th>Delivery Address</th>
                     <th>Invoice</th>
-                    <th>Action</th>
                     <?php if ($_SESSION['role'] == 'farmer' || $_SESSION['role'] == 'importer'): ?>
+                        <th>Action</th>
                     <?php endif; ?>
                 </tr>
             </thead>
@@ -216,26 +220,28 @@ $orders = $stmt->fetchAll();
                 <?php else: ?>
                     <?php foreach ($orders as $order): ?>
                         <tr>
-                            <td><?php echo htmlspecialchars($order['id']); ?></td>
-                            <td><?php echo htmlspecialchars($order['name']); ?></td>
-                            <td><?php echo htmlspecialchars($order['importer'] ?? ($order['farmer'] ?? '')); ?></td>
-                            <td><?php echo htmlspecialchars($order['quantity']); ?></td>
-                            <td><?php echo htmlspecialchars($order['payment_terms']); ?></td>
-                            <td><?php echo htmlspecialchars($order['currency']); ?></td>
-                            <td><?php echo htmlspecialchars($order['quantity'] * $order['price']) . " " . htmlspecialchars($order['currency']); ?></td>
-                            <td><?php echo htmlspecialchars($order['status']); ?></td>
+                            <td><?php echo htmlspecialchars($order['id'] ?? ''); ?></td>
+                            <td><?php echo htmlspecialchars($order['name'] ?? 'N/A'); ?></td>
+                            <td><?php echo htmlspecialchars($_SESSION['role'] == 'farmer' ? ($order['importer_name'] ?? 'N/A') : ($order['farmer_name'] ?? 'N/A')); ?></td>
+                            <td><?php echo htmlspecialchars($order['quantity'] ?? ''); ?></td>
+                            <td><?php echo htmlspecialchars($order['payment_terms'] ?? 'N/A'); ?></td>
+                            <td><?php echo htmlspecialchars($order['currency'] ?? 'N/A'); ?></td>
+                            <td><?php echo htmlspecialchars(($order['quantity'] ?? 0) * ($order['price'] ?? 0)) . " " . htmlspecialchars($order['currency'] ?? ''); ?></td>
+                            <td><?php echo htmlspecialchars($order['status'] ?? 'N/A'); ?></td>
                             <td><?php echo htmlspecialchars($order['updated_at'] ?? 'N/A'); ?></td>
                             <td><?php echo htmlspecialchars($order['delivery_address'] ?? 'N/A'); ?></td>
-                            <td><a href="generatedocs.php?order_id=<?php echo $order['id']; ?>&action=view" target="_blank" class="btn btn-sm btn-secondary">View</a> | <a href="generatedocs.php?order_id=<?php echo $order['id']; ?>&action=download" target="_blank" class="btn btn-sm btn-secondary">Download</a></td>
-                    
-                            <?php if ($_SESSION['role'] == 'farmer'): ?>
+                            <td>
+                                <a href="generatedocs.php?order_id=<?php echo htmlspecialchars($order['id'] ?? ''); ?>&action=view" target="_blank" class="btn btn-sm btn-secondary">View</a> | 
+                                <a href="generatedocs.php?order_id=<?php echo htmlspecialchars($order['id'] ?? ''); ?>&action=download" target="_blank" class="btn btn-sm btn-secondary">Download</a>
+                            </td>
+                                <?php if ($_SESSION['role'] == 'farmer'): ?>
                                 <td>
                                     <form method="POST" enctype="multipart/form-data" style="display:inline;">
-                                        <input type="hidden" name="order_id" value="<?php echo $order['id']; ?>">
+                                        <input type="hidden" name="order_id" value="<?php echo htmlspecialchars($order['id'] ?? ''); ?>">
                                         <select name="status" class="form-select d-inline w-auto">
-                                            <option value="pending" <?php echo $order['status'] == 'pending' ? 'selected' : ''; ?>>Pending</option>
-                                            <option value="confirmed" <?php echo $order['status'] == 'confirmed' ? 'selected' : ''; ?>>Confirmed</option>
-                                            <option value="shipped" <?php echo $order['status'] == 'shipped' ? 'selected' : ''; ?>>Shipped</option>
+                                            <option value="pending" <?php echo ($order['status'] ?? '') == 'pending' ? 'selected' : ''; ?>>Pending</option>
+                                            <option value="confirmed" <?php echo ($order['status'] ?? '') == 'confirmed' ? 'selected' : ''; ?>>Confirmed</option>
+                                            <option value="shipped" <?php echo ($order['status'] ?? '') == 'shipped' ? 'selected' : ''; ?>>Shipped</option>
                                         </select>
                                         <input type="file" class="form-control form-control-sm d-inline w-auto" id="export_doc" name="export_doc" accept="application/pdf">
                                         <button type="submit" name="update_status" class="btn btn-primary btn-sm">Update</button>
@@ -243,11 +249,11 @@ $orders = $stmt->fetchAll();
                                 </td>
                             <?php elseif ($_SESSION['role'] == 'importer'): ?>
                                 <td>
-                                    <?php if ($order['status'] == 'shipped'): ?>
+                                    <?php if (($order['status'] ?? '') == 'shipped'): ?>
                                         <form method="POST" style="display:inline;">
-                                            <input type="hidden" name="order_id" value="<?php echo $order['id']; ?>">
-                                            <input type="checkbox" name="update_delivered" id="delivered_<?php echo $order['id']; ?>" onchange="this.form.submit()" <?php echo $order['status'] == 'delivered' ? 'checked disabled' : ''; ?>>
-                                            <label for="delivered_<?php echo $order['id']; ?>">Delivered</label>
+                                            <input type="hidden" name="order_id" value="<?php echo htmlspecialchars($order['id'] ?? ''); ?>">
+                                            <input type="checkbox" name="update_delivered" id="delivered_<?php echo htmlspecialchars($order['id'] ?? ''); ?>" onchange="this.form.submit()" <?php echo ($order['status'] ?? '') == 'delivered' ? 'checked disabled' : ''; ?>>
+                                            <label for="delivered_<?php echo htmlspecialchars($order['id'] ?? ''); ?>">Delivered</label>
                                         </form>
                                     <?php endif; ?>
                                 </td>
